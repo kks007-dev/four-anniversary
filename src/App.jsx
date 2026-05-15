@@ -1505,15 +1505,16 @@ function FinalUnlock({ totalScore }) {
   useEffect(() => {
     if (!revealed) return;
     if (visibleCount >= KRISH_MESSAGES.length) {
-      setTimeout(() => setShowScore(true), 1000);
+      setTimeout(() => setShowScore(true), 2800);
       return;
     }
     setTyping(true);
-    // Delay scales with message length — short = fast, long = takes a beat
-    const delay = Math.min(2000, Math.max(500, KRISH_MESSAGES[visibleCount].length * 16));
+    // Slower pacing: longer “typing” beat for short texts, higher cap for long ones
+    const len = KRISH_MESSAGES[visibleCount].length;
+    const delay = Math.min(7200, Math.max(2200, len * 55));
     const t = setTimeout(() => {
       setTyping(false);
-      setTimeout(() => setVisibleCount(c => c + 1), 100);
+      setTimeout(() => setVisibleCount(c => c + 1), 650);
     }, delay);
     return () => clearTimeout(t);
   }, [revealed, visibleCount]);
