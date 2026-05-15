@@ -70,6 +70,27 @@ function getUnlockDate(idx) {
   const d = new Date(); d.setHours(Math.floor(tot/60)%24, tot%60, 0, 0); return d;
 }
 const isUnlocked = idx => new Date() >= getUnlockDate(idx);
+
+// Secret test mode — not linked in the UI for players. See README / dev note for URL.
+const DEV_QUERY_VALUES = new Set(["krish", "1", "true", "test"]);
+
+function readDevFromUrl() {
+  if (typeof window === "undefined") return false;
+  const q = new URLSearchParams(window.location.search);
+  const v = (q.get("dev") || "").trim().toLowerCase();
+  if (DEV_QUERY_VALUES.has(v)) return true;
+  if (window.location.hash === "#dev") return true;
+  return sessionStorage.getItem("_us_dev") === "1";
+}
+
+function activateDevMode() {
+  sessionStorage.setItem("_us_dev", "1");
+  sessionStorage.setItem("_pin_ok", "1");
+}
+
+function deactivateDevMode() {
+  sessionStorage.removeItem("_us_dev");
+}
 function fmtTime(date) {
   let h=date.getHours(), m=date.getMinutes(), ap=h>=12?"PM":"AM"; h=h%12||12;
   return `${h}:${m.toString().padStart(2,"0")} ${ap}`;
@@ -495,34 +516,72 @@ const GAMES = [
       ],
     },
   },
-  // 12 — CAPTION GAME 7pm
-  // Topic: specific scenes from their story — distinct captions, distinct scenes
+  // 12 — TWO TRUTHS & A LIE 7pm
   {
-    id:12, type:"caption", emoji:"📸", title:"Best Caption Wins",
+    id:12, type:"twotruths", emoji:"🎯", title:"Spot the Lie",
     unlockLabel:"7:00 PM",
-    teaser:"Pick the caption he'd actually post.",
+    teaser:"Two truths, one lie — about us.",
     howToPlay:[
-      "A scene description is shown — imagine the photo.",
-      "Pick which caption Krish would actually use.",
-      "He already answered — can you predict him?",
-      "1 question per difficulty. Make it count.",
+      "You get three statements about a memory.",
+      "Two are true. One is the lie.",
+      "Tap the statement you think is false.",
+      "Green = you caught it. Red = that one was actually true.",
     ],
     data:{
-      easy:[{
-        scene:"📸 Aug 23, 2024 — the day he got you a love lock",
-        options:["locked in fr 🔒","officially us now","she said yes to the lock lol","main character energy"],
-        answer:0,
-      }],
-      medium:[{
-        scene:"📸 Sept 21, 2024 — his moon-themed hoco proposal",
-        options:["to the moon and back 🌙","she said yes :')","certified hopeless romantic","hoco proposal szn"],
-        answer:0,
-      }],
-      hard:[{
-        scene:"📸 Halloweekend 2025 — dressed as Mickey & Minnie, out together",
-        options:["mouse ears mandatory 🐭","she picked the fit lol","couples costume unlocked","you're my Minnie 💜"],
-        answer:3,
-      }],
+      easy:[
+        { topic:"The love lock — Aug 23, 2024",
+          statements:[
+            "Krish got you a love lock that day.",
+            "You put the lock on a bridge together.",
+            "This happened before senior year started.",
+          ], lie:2 },
+        { topic:"Cancun",
+          statements:[
+            "Your first kiss was on that trip.",
+            "The ninja joke was a dad joke about Cancun — not his height.",
+            "The Grand Palace was the only place you went.",
+          ], lie:2 },
+      ],
+      medium:[
+        { topic:"Naacho season",
+          statements:[
+            "Miller Outdoor Theatre was one of your shows.",
+            "Dil Se Naach and Urban Nutcracker were on your list.",
+            "Discovery Green was where you only practiced, never performed.",
+          ], lie:2 },
+        { topic:"Sept 20–21, 2025 visit",
+          statements:[
+            "You had ramen at Ramen Tatsuya.",
+            "The visit was only a few hours — no overnight stay.",
+            "You played air hockey together.",
+          ], lie:1 },
+        { topic:"Senior year 2024",
+          statements:[
+            "The moon-themed hoco proposal was Sept 21, 2024.",
+            "Hasini's proposal was the day before yours.",
+            "Nov 8, 2024 you met at a UH fair.",
+          ], lie:1 },
+      ],
+      hard:[
+        { topic:"Prom & spring 2025",
+          statements:[
+            "Prom was April 5, 2025 — green theme.",
+            "College visits happened before prom.",
+            "Spring break dates included Pizookie and Bowlero.",
+          ], lie:1 },
+        { topic:"Halloweekend 2025",
+          statements:[
+            "You dressed as Mickey & Minnie.",
+            "North Italia was part of that weekend.",
+            "Kim Possible was your couples costume.",
+          ], lie:2 },
+        { topic:"April 2025 Austin",
+          statements:[
+            "DDN Legends was part of that trip.",
+            "The trip was April 16–18.",
+            "Penn Dhamaka happened the same weekend in Austin.",
+          ], lie:2 },
+      ],
     },
   },
   // 13 — SUDOKU 8pm
@@ -1462,47 +1521,70 @@ function PinpointGame({ data, difficulty, onScore }) {
   );
 }
 
-// ── CAPTION ───────────────────────────────────────────────────────────────────
-function CaptionGame({ data, difficulty, onScore }) {
-  const puzzles=data[difficulty];
+// ── TWO TRUTHS & A LIE ───────────────────────────────────────────────────────
+function TwoTruthsGame({ data, difficulty, onScore }) {
+  const rounds=data[difficulty];
   const [idx,setIdx]=useState(0);
   const [chosen,setChosen]=useState(null);
   const [results,setResults]=useState([]);
   const [done,setDone]=useState(false);
 
   const pick=i=>{
-    if(chosen!==null)return;setChosen(i);
-    const ok=i===puzzles[idx].answer, nr=[...results,ok];
+    if(chosen!==null)return;
+    setChosen(i);
+    const ok=i===rounds[idx].lie;
+    const nr=[...results,ok];
     setTimeout(()=>{
-      if(idx+1>=puzzles.length){setDone(true);onScore(nr.filter(Boolean).length*130);}
-      else{setIdx(idx+1);setChosen(null);setResults(nr);}
-    },1050);
+      if(idx+1>=rounds.length){
+        const right=nr.filter(Boolean).length;
+        const pts=difficulty==="hard"?right*95:difficulty==="medium"?right*75:right*60;
+        setDone(true);
+        onScore(pts);
+      }else{
+        setIdx(idx+1);
+        setChosen(null);
+        setResults(nr);
+      }
+    },1000);
   };
 
-  if(done) return <div style={{ textAlign:"center", animation:"popIn 0.5s ease" }}>
-    <p style={{ fontSize:48, marginBottom:12 }}>📸</p>
-    <p style={{ color:T.primary, fontSize:24, fontWeight:900 }}>{results.filter(Boolean).length}/{puzzles.length} — you get him 💜</p>
-  </div>;
+  if(done){
+    const right=results.filter(Boolean).length;
+    return (
+      <div style={{ textAlign:"center", animation:"popIn 0.5s ease", padding:"16px 0" }}>
+        <p style={{ fontSize:48, marginBottom:12 }}>🎯</p>
+        <p style={{ color:T.primary, fontSize:22, fontWeight:900 }}>{right}/{rounds.length} lies spotted</p>
+        <p style={{ color:T.textMuted, fontSize:14, marginTop:8 }}>you know our story 💜</p>
+      </div>
+    );
+  }
 
-  const p=puzzles[idx];
+  const r=rounds[idx];
   return (
     <div key={idx} style={{ animation:"fadeUp 0.35s ease" }}>
-      <div style={{ background:`${T.primaryDim}18`, border:`2px dashed ${T.border}`, borderRadius:18,
-        padding:24, textAlign:"center", marginBottom:20 }}>
-        <div style={{ fontSize:44, marginBottom:8, animation:"float 3s ease-in-out infinite" }}>🖼️</div>
-        <p style={{ color:T.textSub, fontStyle:"italic", fontSize:13 }}>{p.scene}</p>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+        <span style={{ color:T.textMuted, fontSize:12, fontWeight:700 }}>Round {idx+1}/{rounds.length}</span>
+        <span style={{ color:T.accent, fontSize:11, fontWeight:700, textTransform:"uppercase" }}>tap the lie</span>
       </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        {p.options.map((opt,i)=>{
-          let bg=`${T.primaryDim}15`,border=T.border,color=T.text;
+      <p style={{ color:T.text, fontSize:16, fontWeight:800, marginBottom:16, lineHeight:1.5 }}>{r.topic}</p>
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        {r.statements.map((line,i)=>{
+          let bg=`${T.primaryDim}15`, border=T.border, color=T.text;
           if(chosen!==null){
-            if(i===p.answer){bg=`${T.mint}18`;border=T.mint;color=T.mint;}
-            else if(i===chosen){bg=`${T.rose}18`;border=T.rose;color=T.rose;}
+            if(i===r.lie){ bg=`${T.mint}18`; border=T.mint; color=T.mint; }
+            else if(i===chosen){ bg=`${T.rose}18`; border=T.rose; color=T.rose; }
+            else { color=T.textMuted; }
           }
-          return <button key={i} onClick={()=>pick(i)} className="ns"
-            style={{ padding:"13px 16px", borderRadius:12, textAlign:"left", background:bg,
-              border:`2px solid ${border}`, color, cursor:"pointer", fontSize:14, fontWeight:600,
-              transition:"all 0.22s", fontFamily:"'Quicksand',sans-serif" }}>"{opt}"</button>;
+          return (
+            <button key={i} type="button" onClick={()=>pick(i)} className="ns btn-press"
+              style={{ padding:"14px 16px", borderRadius:14, textAlign:"left", background:bg,
+                border:`2px solid ${border}`, color, cursor:chosen!==null?"default":"pointer",
+                fontSize:14, fontWeight:600, lineHeight:1.5, transition:"all 0.22s",
+                fontFamily:"'Quicksand',sans-serif" }}>
+              <span style={{ color:T.textDim, fontWeight:800, marginRight:8 }}>{i+1}.</span>
+              {line}
+            </button>
+          );
         })}
       </div>
     </div>
@@ -1697,9 +1779,9 @@ function FinalUnlock({ totalScore }) {
 }
 
 // ── GAME ROUTER ───────────────────────────────────────────────────────────────
-function GameRouter({ game, difficulty, onScore, scored, totalScore }) {
+function GameRouter({ game, difficulty, onScore, scored, totalScore, devMode }) {
   const p={ data:game.data, difficulty, onScore };
-  if (scored) return (
+  if (scored && !devMode) return (
     <div style={{ textAlign:"center", padding:32, animation:"popIn 0.5s ease" }}>
       <div style={{ fontSize:52, animation:"float 3s ease-in-out infinite", marginBottom:12 }}>✅</div>
       <p style={{ color:T.mint, fontSize:18, fontWeight:800 }}>Already completed!</p>
@@ -1709,7 +1791,7 @@ function GameRouter({ game, difficulty, onScore, scored, totalScore }) {
     wordle:WordleGame, connections:ConnectionsGame, trivia:TriviaGame, emoji:EmojiGame,
     memory:MemoryGame, lyrics:LyricsGame, spellingbee:SpellingBeeGame, anagram:AnagramGame,
     timeline:TimelineGame, wordsearch:WordSearchGame, pinpoint:PinpointGame,
-    caption:CaptionGame, sudoku:SudokuGame,
+    twotruths:TwoTruthsGame, sudoku:SudokuGame,
   };
   if (game.type==="final") return <FinalUnlock totalScore={totalScore}/>;
   const Comp=map[game.type];
@@ -1720,6 +1802,38 @@ function GameRouter({ game, difficulty, onScore, scored, totalScore }) {
 // MAIN APP
 // ─── PIN LOCK ────────────────────────────────────────────────────────────────
 const CORRECT_PIN = "0515";
+
+function DevTools({ devMode, onToggleDev, onReset, onSkipSplash, state }) {
+  if (!devMode) return null;
+  return (
+    <div style={{ position:"fixed", bottom:12, left:12, right:12, zIndex:200,
+      background:`${T.bgCard}f2`, border:`2px solid ${T.gold}`, borderRadius:14,
+      padding:"12px 14px", boxShadow:`0 8px 32px ${T.primaryDim}55`, backdropFilter:"blur(8px)" }}>
+      <p style={{ color:T.gold, fontWeight:800, fontSize:12, margin:"0 0 8px", textAlign:"center" }}>
+        🛠 TEST MODE — only you see this
+      </p>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center" }}>
+        {!state.started && (
+          <button type="button" onClick={onSkipSplash} className="btn-press"
+            style={{ background:`${T.primaryDim}30`, border:`1px solid ${T.border}`, color:T.text,
+              borderRadius:8, padding:"6px 10px", fontSize:11, fontWeight:700, cursor:"pointer",
+              fontFamily:"'Quicksand',sans-serif" }}>Skip splash</button>
+        )}
+        <button type="button" onClick={onReset} className="btn-press"
+          style={{ background:`${T.rose}22`, border:`1px solid ${T.rose}`, color:T.rose,
+            borderRadius:8, padding:"6px 10px", fontSize:11, fontWeight:700, cursor:"pointer",
+            fontFamily:"'Quicksand',sans-serif" }}>Reset progress</button>
+        <button type="button" onClick={onToggleDev} className="btn-press"
+          style={{ background:"transparent", border:`1px solid ${T.border}`, color:T.textMuted,
+            borderRadius:8, padding:"6px 10px", fontSize:11, fontWeight:700, cursor:"pointer",
+            fontFamily:"'Quicksand',sans-serif" }}>Exit test mode</button>
+      </div>
+      <p style={{ color:T.textDim, fontSize:10, margin:"8px 0 0", textAlign:"center", lineHeight:1.4 }}>
+        All games unlocked · scores can be replayed
+      </p>
+    </div>
+  );
+}
 
 function PinLock({ onUnlock }) {
   const [digits, setDigits] = useState([]);
@@ -1824,12 +1938,15 @@ function PinLock({ onUnlock }) {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const [unlocked, setUnlocked]    = useState(()=>sessionStorage.getItem("_pin_ok")==="1");
+  const [devMode, setDevMode]      = useState(()=>readDevFromUrl());
+  const [unlocked, setUnlocked]    = useState(()=>sessionStorage.getItem("_pin_ok")==="1"||readDevFromUrl());
   const [state,setState]           = useState(()=>loadState());
   const [activeGame,setActiveGame] = useState(null);
   const [difficulty,setDifficulty] = useState(null);
   const [showHTP,setShowHTP]       = useState(false);
   const [,setTick]                 = useState(0);
+
+  const gameUnlocked = useCallback(i=>devMode||isUnlocked(i),[devMode]);
 
   // All hooks must be called unconditionally before any early returns
   useEffect(()=>{ const t=setInterval(()=>setTick(x=>x+1),1000); return()=>clearInterval(t); },[]);
@@ -1838,14 +1955,47 @@ export default function App() {
     document.addEventListener("contextmenu",prevent);
     return()=>document.removeEventListener("contextmenu",prevent);
   },[]);
+  useEffect(()=>{
+    if (typeof window==="undefined") return;
+    const q=new URLSearchParams(window.location.search);
+    const v=(q.get("dev")||"").trim().toLowerCase();
+    if (DEV_QUERY_VALUES.has(v)||window.location.hash==="#dev"){
+      activateDevMode();
+      setDevMode(true);
+      setUnlocked(true);
+    }
+  },[]);
 
   const recordScore=useCallback((gid,pts)=>{
     setState(prev=>{
-      if (prev.scores&&prev.scores[gid]!==undefined) return prev; // write-once
+      if (!devMode&&prev.scores&&prev.scores[gid]!==undefined) return prev;
       const n={...prev,scores:{...(prev.scores||{}),[gid]:pts}};
       saveState(n); return n;
     });
+  },[devMode]);
+
+  const resetProgress=useCallback(()=>{
+    localStorage.removeItem(STORE_KEY);
+    setState(devMode?{started:true}:{});
+    setActiveGame(null);
+    setDifficulty(null);
+  },[devMode]);
+
+  const exitDevMode=useCallback(()=>{
+    deactivateDevMode();
+    setDevMode(false);
   },[]);
+
+  const skipSplash=useCallback(()=>{
+    const n={...state,started:true};
+    saveState(n);
+    setState(n);
+  },[state]);
+
+  const devBar=(
+    <DevTools devMode={devMode} state={state} onReset={resetProgress}
+      onSkipSplash={skipSplash} onToggleDev={exitDevMode}/>
+  );
 
   // PIN gate — first thing she sees when she opens the link
   if (!unlocked) return (
@@ -1856,7 +2006,7 @@ export default function App() {
   );
 
   const totalScore=Object.values(state.scores||{}).reduce((a,b)=>a+b,0);
-  const openGame=(game,i)=>{ if(!isUnlocked(i))return; setActiveGame({game,index:i}); setDifficulty(null); setShowHTP(false); };
+  const openGame=(game,i)=>{ if(!gameUnlocked(i))return; setActiveGame({game,index:i}); setDifficulty(null); setShowHTP(false); };
 
   // ── SPLASH ────────────────────────────────────────────────────────────────
   if (!state.started) return (
@@ -1892,6 +2042,7 @@ export default function App() {
           {fmtTime(getUnlockDate(0))} → {fmtTime(getUnlockDate(14))} · one per hour
         </p>
       </div>
+      {devBar}
     </div>
   );
 
@@ -1926,7 +2077,7 @@ export default function App() {
               <h2 style={{ color:T.text, margin:0, fontSize:18, fontWeight:800 }}>{game.emoji} {game.title}</h2>
             </div>
             {/* How to play button */}
-            {game.howToPlay && !scored && (
+            {game.howToPlay && (!scored||devMode) && (
               <button onClick={()=>setShowHTP(true)} className="btn-press"
                 style={{ background:`${T.primaryDim}20`, border:`1.5px solid ${T.border}`, borderRadius:12,
                   color:T.textSub, padding:"8px 12px", cursor:"pointer", fontSize:12, fontWeight:700,
@@ -1977,17 +2128,18 @@ export default function App() {
             </div>
           ) : (
             <div style={{ padding:"0 20px", animation:"fadeUp 0.35s ease" }}>
-              <GameRouter game={game} difficulty={difficulty} scored={scored} totalScore={ts}
+              <GameRouter game={game} difficulty={difficulty} scored={scored} devMode={devMode} totalScore={ts}
                 onScore={pts=>recordScore(game.id,pts)}/>
             </div>
           )}
         </div>
+        {devBar}
       </div>
     );
   }
 
   // ── MAIN FEED ─────────────────────────────────────────────────────────────
-  const unlockedCount=GAMES.filter((_,i)=>isUnlocked(i)).length;
+  const unlockedCount=devMode?GAMES.length:GAMES.filter((_,i)=>isUnlocked(i)).length;
   const completedCount=Object.keys(state.scores||{}).length;
 
   return (
@@ -2006,6 +2158,12 @@ export default function App() {
           <p style={{ color:T.textMuted, fontSize:13, margin:"0 0 22px", fontWeight:600 }}>
             Happy 4th anniversary ✨ · one game per hour
           </p>
+          {devMode&&(
+            <p style={{ color:T.gold, fontSize:12, fontWeight:800, margin:"-14px 0 18px",
+              background:`${T.gold}18`, border:`1px solid ${T.gold}55`, borderRadius:10, padding:"8px 12px" }}>
+              🛠 Test mode — all games open
+            </p>
+          )}
           <div style={{ display:"flex", gap:0, background:T.bgCard, borderRadius:20,
             border:`1.5px solid ${T.border}`, overflow:"hidden", boxShadow:`0 4px 28px ${T.primaryDim}20` }}>
             {[[unlockedCount,"unlocked",T.accent],[completedCount,"done",T.mint],[totalScore,"pts",T.primary]].map(([val,label,col],i)=>(
@@ -2020,7 +2178,7 @@ export default function App() {
 
         <div style={{ padding:"0 16px 44px", display:"flex", flexDirection:"column", gap:9 }}>
           {GAMES.map((game,i)=>{
-            const unlocked=isUnlocked(i);
+            const unlocked=gameUnlocked(i);
             const completed=(state.scores||{})[game.id]!==undefined;
             const pts=(state.scores||{})[game.id];
             const justUnlocked=unlocked&&!completed&&i===unlockedCount-1;
@@ -2075,17 +2233,8 @@ export default function App() {
           })}
         </div>
 
-        {/* Reset progress — dev only (hidden in production build) */}
-        {import.meta.env.DEV && (
-        <div style={{ textAlign:"center", padding:"0 20px 52px" }}>
-          <button onClick={()=>{localStorage.removeItem(STORE_KEY);setState({});}}
-            style={{ background:"none", border:`1px solid ${T.border}`, color:T.textDim,
-              borderRadius:10, padding:"6px 16px", cursor:"pointer", fontSize:12,
-              fontFamily:"'Quicksand',sans-serif" }}>
-            Reset (dev)
-          </button>
-        </div>
-        )}
+        <div style={{ paddingBottom: devMode ? 100 : 44 }}/>
+        {devBar}
       </div>
     </div>
   );
