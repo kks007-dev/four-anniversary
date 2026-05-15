@@ -62,8 +62,11 @@ const normalizeScores = (scores) => {
   if (!scores) return {};
   const out = { ...scores };
   for (const [k, v] of Object.entries(scores)) {
-    if (/^\d+$/.test(k) && out[scoreKey(k, "easy")] === undefined
-        && out[scoreKey(k, "medium")] === undefined && out[scoreKey(k, "hard")] === undefined) {
+    if (!/^\d+$/.test(k)) continue;
+    const hasSuffix = DIFFICULTIES.some(d => out[scoreKey(k, d)] !== undefined);
+    if (hasSuffix) {
+      delete out[k];
+    } else {
       out[scoreKey(k, "easy")] = v;
       delete out[k];
     }
@@ -2123,7 +2126,10 @@ export default function App() {
   const [state,setState]           = useState(()=>{
     const s = loadState();
     const scores = normalizeScores(s.scores);
-    return scores === s.scores ? s : { ...s, scores };
+    if (scores === s.scores) return s;
+    const n = { ...s, scores };
+    saveState(n);
+    return n;
   });
   const [activeGame,setActiveGame] = useState(null);
   const [difficulty,setDifficulty] = useState(null);
@@ -2153,8 +2159,9 @@ export default function App() {
   const recordScore=useCallback((gid,difficulty,pts)=>{
     const key=scoreKey(gid,difficulty);
     setState(prev=>{
-      if (!devMode&&prev.scores&&prev.scores[key]!==undefined) return prev;
-      const n={...prev,scores:{...(prev.scores||{}),[key]:pts}};
+      const scores=normalizeScores(prev.scores||{});
+      if (!devMode&&scores[key]!==undefined) return prev;
+      const n={...prev,scores:{...scores,[key]:pts}};
       saveState(n); return n;
     });
   },[devMode]);
