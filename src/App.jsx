@@ -98,7 +98,7 @@ function getUnlockDate(idx) {
 }
 const isUnlocked = idx => new Date() >= getUnlockDate(idx);
 
-// Secret test mode — not linked in the UI for players. See README / dev note for URL.
+// Secret test mode, not linked in the UI for players. See README / dev note for URL.
 const DEV_QUERY_VALUES = new Set(["krish", "1", "true", "test"]);
 
 function readDevFromUrl() {
@@ -175,11 +175,11 @@ const CSS = `
 
 // ─── GAME DATA ────────────────────────────────────────────────────────────────
 // RULE: zero overlapping facts across all 15 games. Each memory lives in exactly one game.
-// Wordle: stores PLAINTEXT word — only ever in memory (useRef), never in localStorage.
+// Wordle: stores PLAINTEXT word, only ever in memory (useRef), never in localStorage.
 // Typed-answer games use accept(...) so spacing/caps/punctuation don't matter.
 
 const GAMES = [
-  // 1 — WORDLE 8am
+  // 1. WORDLE 8am
   // Topic: the exact word from their story. Each difficulty = different word, zero overlap.
   {
     id:1, type:"wordle", emoji:"📐", title:"Word of Us",
@@ -190,7 +190,7 @@ const GAMES = [
       "🟩 Green = right letter, right spot.",
       "🟨 Yellow = right letter, wrong spot.",
       "⬜ Gray = letter not in the word.",
-      "The hint connects to your story — use it!",
+      "The hint connects to your story, use it!",
     ],
     data:{
       easy:  { word:"LAUGH", len:5, hint:'What you two do most together 😂' },
@@ -198,16 +198,16 @@ const GAMES = [
       hard:  { word:"DANCE", len:5, hint:'What brought you onto the same team 💃' },
     },
   },
-  // 2 — CONNECTIONS 9am
-  // Topic: four clean, non-overlapping groups — each item unique across all groups
+  // 2. CONNECTIONS 9am
+  // Topic: four clean, non-overlapping groups, each item unique across all groups
   {
     id:2, type:"connections", emoji:"🔗", title:"Our Connections",
     unlockLabel:"9:00 AM",
-    teaser:"Sort 16 words into 4 groups. No overlaps — trust your gut.",
+    teaser:"Sort 16 words into 4 groups. No overlaps, trust your gut.",
     howToPlay:[
       "Pick 4 items you think belong in the same group.",
       "Tap Submit. If correct, the group is revealed with its color.",
-      "💜 = one away! You have exactly one wrong — swap one out.",
+      "💜 = one away! You have exactly one wrong, swap one out.",
       "4 mistakes and it's over. Think carefully before submitting.",
       "The groups all connect to our story 🥹",
     ],
@@ -218,7 +218,7 @@ const GAMES = [
             items:["Cancun","Rice campus","Kroger lot","UH fair"] },
           { name:"Words from the confession 💜", color:"#818cf8",
             items:["Blushy","Crushy","Mhmm","Gosh"] },
-          { name:"Cancun — laughs & moments 🌴", color:"#f59e0b",
+          { name:"Cancun, laughs & moments 🌴", color:"#f59e0b",
             items:["A ninja","Beach","Grand Palace","Pool"] },
           { name:"Naacho shows 💃", color:"#10b981",
             items:["Miller","Dil Se Naach","Urban Nutcracker","Discovery Green"] },
@@ -238,11 +238,11 @@ const GAMES = [
       },
       hard:{
         groups:[
-          { name:"Jan 18, 2022 — the first convo 📐", color:"#f472b6",
+          { name:"Jan 18, 2022: the first convo 📐", color:"#f472b6",
             items:["Step 11","Two column","Flow proofs","10:02 PM"] },
-          { name:"Mar 19, 2022 — the confession 💜", color:"#818cf8",
+          { name:"Mar 19, 2022: the confession 💜", color:"#818cf8",
             items:["Answer is yes","Close yesterday","Fine day","Blushing now"] },
-          { name:"Oct 2–5, 2025 — Austin visit 🌮", color:"#f59e0b",
+          { name:"Oct 2-5, 2025: Austin visit 🌮", color:"#f59e0b",
             items:["UT garba","Velvet Taco","Putt putt","Air hockey"] },
           { name:"Freshman year together 💜", color:"#10b981",
             items:["Jhalak weekend","Bowlero night","DDN Legends","Penn Dhamaka"] },
@@ -250,14 +250,14 @@ const GAMES = [
       },
     },
   },
-  // 3 — TRIVIA (How Well Do You Know Us) 10am
-  // Topic: your story together — dates, places, us things. Krish career facts live in game 14 only if needed.
+  // 3. TRIVIA (How Well Do You Know Us) 10am
+  // Topic: your story together, dates, places, us things. Krish career facts live in game 14 only if needed.
   {
     id:3, type:"trivia", emoji:"💑", title:"How Well Do You Know Us?",
     unlockLabel:"10:00 AM",
     teaser:"Our story. Shared memories. Real ones.",
     howToPlay:[
-      "Tap one of four answers — no typing on this one.",
+      "Tap one of four answers, no typing on this one.",
       "Green = correct ✅   Red = wrong ❌",
       "Next question loads automatically after your pick.",
       "More points for harder difficulties.",
@@ -265,7 +265,7 @@ const GAMES = [
     data:{
       easy:[
         { q:"How did you two first start talking?",
-          options:["Instagram DM","Discord — geometry","In person at school","Game Pigeon"], a:1 },
+          options:["Instagram DM","Discord, geometry","In person at school","Game Pigeon"], a:1 },
         { q:"What dance team did you both join?",
           options:["Raas","Fusion","Naacho","Bhangra"], a:2 },
         { q:"Where was your first trip together?",
@@ -284,24 +284,24 @@ const GAMES = [
           options:["July 2024","Aug 23, 2024","Sept 20, 2024","Nov 8, 2024"], a:1 },
         { q:"What was his hoco proposal theme?",
           options:["Stars","Moon","Sunset","Garden"], a:1 },
-        { q:"First movie on the bucket list — what did you watch?",
+        { q:"First movie on the bucket list, what did you watch?",
           options:["Encanto","Minions","Turning Red","Luca"], a:1 },
       ],
       hard:[
         { q:"When was his moon-themed hoco proposal?",
           options:["Sept 20, 2024","Sept 21, 2024","Sept 24, 2024","Oct 28, 2023"], a:1 },
-        { q:"Summer 2024 — Fort Bend Transit ran between…",
+        { q:"Summer 2024: Fort Bend Transit ran between…",
           options:["Rice & downtown","UH Sugarland & Methodist","TAMU & Austin","Home & school"], a:1 },
-        { q:"Senior year — where did you drive to hang out and talk?",
+        { q:"Senior year, where did you drive to hang out and talk?",
           options:["The mall","The parking lot near Kroger","Behind school","A gas station"], a:1 },
-        { q:"Nov 8, 2024 — where did you meet up?",
+        { q:"Nov 8, 2024: where did you meet up?",
           options:["Rice","A UH fair","Miller Outdoor Theatre","The Kroger lot"], a:1 },
         { q:"His favorite photo background at Miller Outdoor Theatre?",
           options:["Sunset","Starry sky","Fireworks","Stage lights"], a:1 },
       ],
     },
   },
-  // 4 — EMOJI DECODER 11am
+  // 4. EMOJI DECODER 11am
   // Topic: specific moments/places from their story. No overlap with other games.
   {
     id:4, type:"emoji", emoji:"🤩", title:"Emoji Decoder",
@@ -311,28 +311,28 @@ const GAMES = [
       "Look at the emoji sequence and figure out the memory it represents.",
       "Type your answer and press Enter or Go.",
       "The hint gives you a nudge if you're stuck.",
-      "Type your best guess — caps, spacing, and punctuation don't matter.",
+      "Type your best guess, caps, spacing, and punctuation don't matter.",
     ],
     data:{
       easy:[
         { emojis:"🌴🏖️💋", answerHashes:accept("CANCUN"),      hint:"Their first trip together" },
-        { emojis:"🚌🎭🔥", answerHashes:accept("BEAUMONT"),     hint:"A Naacho show — and that bus ride back" },
+        { emojis:"🚌🎭🔥", answerHashes:accept("BEAUMONT"),     hint:"A Naacho show, and that bus ride back" },
         { emojis:"🎡🌳☀️", answerHashes:accept("CARNIVAL"),     hint:"Elementary school volunteering, kinda" },
       ],
       medium:[
-        { emojis:"🔒💕✨",   answerHashes:accept("LOVE LOCK", "LOVELOCK"), hint:"Aug 23, 2024 — he got you one" },
-        { emojis:"🌙💍🌃",   answerHashes:accept("MOON THEMED", "MOON", "MOON THEME"), hint:"Sept 21, 2024 — his hoco proposal" },
-        { emojis:"🚌📝🏥",   answerHashes:accept("FORT BEND TRANSIT", "FORT BEND"), hint:"Summer — bus from UH Sugarland to Methodist" },
+        { emojis:"🔒💕✨",   answerHashes:accept("LOVE LOCK", "LOVELOCK"), hint:"Aug 23, 2024: he got you one" },
+        { emojis:"🌙💍🌃",   answerHashes:accept("MOON THEMED", "MOON", "MOON THEME"), hint:"Sept 21, 2024: his hoco proposal" },
+        { emojis:"🚌📝🏥",   answerHashes:accept("FORT BEND TRANSIT", "FORT BEND"), hint:"Summer, bus from UH Sugarland to Methodist" },
       ],
       hard:[
-        { emojis:"🅿️🛒🌙",     answerHashes:accept("KROGER PARKING LOT", "KROGER", "KROGER LOT"), hint:"Senior year — where you'd drive to talk" },
-        { emojis:"💜🍚📸",     answerHashes:accept("VELVET TACO", "VELVET"), hint:"Oct visit — that Austin taco spot" },
-        { emojis:"🎭⭐🌌",     answerHashes:accept("MILLER OUTDOOR THEATRE", "MILLER OUTDOOR", "MILLER"), hint:"Pre-grad show — your favorite starry pic" },
+        { emojis:"🅿️🛒🌙",     answerHashes:accept("KROGER PARKING LOT", "KROGER", "KROGER LOT"), hint:"Senior year, where you'd drive to talk" },
+        { emojis:"💜🍚📸",     answerHashes:accept("VELVET TACO", "VELVET"), hint:"Oct visit, that Austin taco spot" },
+        { emojis:"🎭⭐🌌",     answerHashes:accept("MILLER OUTDOOR THEATRE", "MILLER OUTDOOR", "MILLER"), hint:"Pre-grad show, your favorite starry pic" },
       ],
     },
   },
-  // 5 — MEMORY MATCH 12pm
-  // Topic: pairs of icons from their story — purely visual, no textual info overlap
+  // 5. MEMORY MATCH 12pm
+  // Topic: pairs of icons from their story, purely visual, no textual info overlap
   {
     id:5, type:"memory", emoji:"🃏", title:"Memory Match",
     unlockLabel:"12:00 PM",
@@ -341,7 +341,7 @@ const GAMES = [
       "Tap a card to flip it over.",
       "Tap a second card to try to match it.",
       "If they match, they stay face up 💜",
-      "If not, they flip back — remember where they were!",
+      "If not, they flip back, remember where they were!",
       "Match all pairs to finish. Fewer moves = more points.",
     ],
     data:{
@@ -350,7 +350,7 @@ const GAMES = [
       hard:  { pairs:["📐","💃","🌴","💌","🤖","🎭","🎄","🎡","📝","🥹"], size:4 },
     },
   },
-  // 6 — FILL THE LYRICS 1pm
+  // 6. FILL THE LYRICS 1pm
   // Topic: songs + their actual flirty exchange from Feb 21 2022. Zero overlap with other games.
   {
     id:6, type:"lyrics", emoji:"🎵", title:"Fill the Lyrics",
@@ -358,9 +358,9 @@ const GAMES = [
     teaser:"Songs we love + one famous Nidhi & Krish original.",
     howToPlay:[
       "Fill in the missing word for each line.",
-      "The blanks connect to real songs — or real things he said.",
+      "The blanks connect to real songs, or real things he said.",
       "Type your answer in the box below each lyric.",
-      "Caps and extra spaces are fine — if it's the right word, it counts.",
+      "Caps and extra spaces are fine, if it's the right word, it counts.",
       "Submit all at once when you're done.",
       "Each correct answer = points 🎵",
     ],
@@ -384,7 +384,7 @@ const GAMES = [
       ],
     },
   },
-  // 7 — SPELLING BEE 2pm
+  // 7. SPELLING BEE 2pm
   // Topic: pure word game, no story overlap
   {
     id:7, type:"spellingbee", emoji:"🐝", title:"Spelling Bee",
@@ -393,7 +393,7 @@ const GAMES = [
     howToPlay:[
       "Every word must include the CENTER letter (highlighted).",
       "Words must be at least 3 letters long.",
-      "The 🌟 bonus word is the sweetest find on the hive — grab it for a big burst of points!",
+      "The 🌟 bonus word is the sweetest find on the hive, grab it for a big burst of points!",
       "Tap letters to build your word, then press Enter.",
       "Find all words to complete the game.",
     ],
@@ -403,18 +403,18 @@ const GAMES = [
       hard:{   center:"A", outer:["M","N","O","R","C","H"], words:["ANCHOR","MANOR","ARCH","ROACH","MARCH","NORM","MACRON","MONARCH"], pangram:"MONARCH" },
     },
   },
-  // 8 — ANAGRAM 3pm
-  // Topic: meaningful words from their story — different words from all other games
+  // 8. ANAGRAM 3pm
+  // Topic: meaningful words from their story, different words from all other games
   {
     id:8, type:"anagram", emoji:"🔀", title:"Unscramble Us",
     unlockLabel:"3:00 PM",
     teaser:"Every scrambled word means something to us.",
     howToPlay:[
-      "The letters shown spell a real word — just scrambled.",
+      "The letters shown spell a real word, just scrambled.",
       "Each word connects to your story in some way.",
       "Type your answer and press Enter or →",
-      "Caps and spacing don't matter — same word = correct.",
-      "One wrong won't end it — you get all 3 puzzles.",
+      "Caps and spacing don't matter, same word = correct.",
+      "One wrong won't end it, you get all 3 puzzles.",
     ],
     data:{
       easy:[
@@ -424,7 +424,7 @@ const GAMES = [
       ],
       medium:[
         { scrambled:"NOOM",          answerHashes:accept("MOON"),         clue:"His hoco proposal theme 🌙" },
-        { scrambled:"KCOLC",         answerHashes:accept("LOCK"),         clue:"Aug 23, 2024 — love ___" },
+        { scrambled:"KCOLC",         answerHashes:accept("LOCK"),         clue:"Aug 23, 2024: love ___" },
         { scrambled:"TSITDOHEM",     answerHashes:accept("METHODIST"),     clue:"Fort Bend Transit stop (with UH Sugarland)" },
       ],
       hard:[
@@ -434,8 +434,8 @@ const GAMES = [
       ],
     },
   },
-  // 9 — TIMELINE 4pm
-  // Topic: real events in order — distinct from all other games
+  // 9. TIMELINE 4pm
+  // Topic: real events in order, distinct from all other games
   {
     id:9, type:"timeline", emoji:"📅", title:"Our Timeline",
     unlockLabel:"4:00 PM",
@@ -443,9 +443,9 @@ const GAMES = [
     howToPlay:[
       "The events are shown in RANDOM order.",
       "Use the ↑↓ arrows to move each event up or down.",
-      "Put them in chronological order — earliest at top.",
+      "Put them in chronological order, earliest at top.",
       "Press 'Lock In' when you're confident.",
-      "Each correct position = points. You lived it — you know this.",
+      "Each correct position = points. You lived it, you know this.",
     ],
     data:{
       easy:{ events:[
@@ -456,43 +456,43 @@ const GAMES = [
         { text:"Cancun 🌴" },
       ]},
       medium:{ events:[
-        { text:"Summer 2024 — Fort Bend Transit mornings 🚌" },
-        { text:"Aug 23, 2024 — Love lock 🔒" },
-        { text:"Sept 20, 2024 — Hasini's hoco proposal" },
-        { text:"Sept 21, 2024 — Moon hoco proposal 🌙" },
-        { text:"Sept 24, 2024 — Hoco at Rice (purple) 💜" },
-        { text:"Nov 8, 2024 — UH fair" },
+        { text:"Summer 2024: Fort Bend Transit mornings 🚌" },
+        { text:"Aug 23, 2024: Love lock 🔒" },
+        { text:"Sept 20, 2024: Hasini's hoco proposal" },
+        { text:"Sept 21, 2024: Moon hoco proposal 🌙" },
+        { text:"Sept 24, 2024: Hoco at Rice (purple) 💜" },
+        { text:"Nov 8, 2024: UH fair" },
         { text:"Miller Outdoor Theatre 🌟" },
-        { text:"April 5, 2025 — Prom (green) 💚" },
+        { text:"April 5, 2025: Prom (green) 💚" },
       ]},
       hard:{ events:[
-        { text:"Jan 18 2022 — Discord convo" },
-        { text:"Mar 19 2022 — confession" },
+        { text:"Jan 18 2022: Discord convo" },
+        { text:"Mar 19 2022: confession" },
         { text:"Made it official" },
         { text:"Cancun 🌴" },
         { text:"Urban Nutcracker" },
-        { text:"Oct 28 2023 — Hoco night" },
-        { text:"Late June–July 2024 — Fort Bend Transit bus mornings" },
-        { text:"Aug 23, 2024 — Love lock" },
-        { text:"Sept 20, 2024 — Hasini's hoco proposal" },
-        { text:"Sept 21, 2024 — Moon hoco proposal" },
-        { text:"Sept 24 2024 — Hoco at Rice (purple)" },
-        { text:"Nov 8, 2024 — UH fair" },
+        { text:"Oct 28 2023: Hoco night" },
+        { text:"Late June-July 2024: Fort Bend Transit bus mornings" },
+        { text:"Aug 23, 2024: Love lock" },
+        { text:"Sept 20, 2024: Hasini's hoco proposal" },
+        { text:"Sept 21, 2024: Moon hoco proposal" },
+        { text:"Sept 24 2024: Hoco at Rice (purple)" },
+        { text:"Nov 8, 2024: UH fair" },
         { text:"Miller Outdoor Theatre 2025" },
-        { text:"April 5, 2025 — Prom (green) 💚" },
-        { text:"Sept 20–21 2025 — 24 hrs + ramen & bowling" },
-        { text:"Oct 2–5 — UT garba & Velvet Taco" },
-        { text:"Oct 18–19 — A&M garba" },
-        { text:"Oct 30–Nov 2 — Halloweekend 🎃" },
-        { text:"Feb 13–16 — Valentine's & Jhalak" },
-        { text:"Spring break — pizookie & Bowlero" },
-        { text:"April 16–18 — Austin & DDN Legends" },
+        { text:"April 5, 2025: Prom (green) 💚" },
+        { text:"Sept 20-21 2025: 24 hrs + ramen & bowling" },
+        { text:"Oct 2-5, UT garba & Velvet Taco" },
+        { text:"Oct 18-19, A&M garba" },
+        { text:"Oct 30-Nov 2, Halloweekend 🎃" },
+        { text:"Feb 13-16, Valentine's & Jhalak" },
+        { text:"Spring break, pizookie & Bowlero" },
+        { text:"April 16-18, Austin & DDN Legends" },
         { text:"Penn Dhamaka wins DDN 🏆" },
       ]},
     },
   },
-  // 10 — WORD SEARCH 5pm
-  // Topic: adjectives/words Nidhi used to describe Krish — only place they appear
+  // 10. WORD SEARCH 5pm
+  // Topic: adjectives/words Nidhi used to describe Krish, only place they appear
   {
     id:10, type:"wordsearch", emoji:"🔍", title:"Find What I Love",
     unlockLabel:"5:00 PM",
@@ -510,17 +510,17 @@ const GAMES = [
       hard:  { words:["JHALAK","KROGER","MICKEY","NORTH","PENN","METHODIST"], gridSize:13 },
     },
   },
-  // 11 — PINPOINT (LinkedIn-style) 6pm
-  // Topic: what connects these four memories — our story categories
+  // 11. PINPOINT (LinkedIn-style) 6pm
+  // Topic: what connects these four memories, our story categories
   {
     id:11, type:"pinpoint", emoji:"📌", title:"What Links Us?",
     unlockLabel:"6:00 PM",
-    teaser:"Like LinkedIn Pinpoint — what connects these clues?",
+    teaser:"Like LinkedIn Pinpoint, what connects these clues?",
     howToPlay:[
-      "Four clue tiles appear — they all share one link.",
+      "Four clue tiles appear, they all share one link.",
       "Pick what connects them (our memory, place, or chapter).",
       "Green = you got the link! Red = not quite.",
-      "Tap an answer — no typing needed.",
+      "Tap an answer, no typing needed.",
     ],
     data:{
       easy:[
@@ -531,23 +531,23 @@ const GAMES = [
       medium:[
         { clues:["Love lock","Moon proposal","Hasini's proposal","UH fair"], options:["Senior year 2024 💜","Freshman year visits","Cancun","Naacho only"], answer:0 },
         { clues:["Velvet Taco","UT garba","Putt putt","Air hockey"], options:["Oct 2025 Austin visit 🌮","Spring break","Prom weekend","Miller show"], answer:0 },
-        { clues:["Ramen Tatsuya","Bowling","24 hours","Air hockey"], options:["Sept 20–21, 2025 visit 💜","Halloweekend","Hoco week","Valentine's & Jhalak"], answer:0 },
+        { clues:["Ramen Tatsuya","Bowling","24 hours","Air hockey"], options:["Sept 20-21, 2025 visit 💜","Halloweekend","Hoco week","Valentine's & Jhalak"], answer:0 },
         { clues:["Kroger lot","Rice campus","UH fair","Methodist"], options:["Places we'd meet up 📍","Naacho shows","Cancun only","College classes"], answer:0 },
       ],
       hard:[
         { clues:["Mickey & Minnie","North Italia","Kim Possible","Halloweekend"], options:["Halloweekend 2025 🎃","Jhalak weekend","DDN Legends trip","Fort Bend summer"], answer:0 },
-        { clues:["Jhalak","Texas Dhoom","Soco","Valentine's"], options:["Feb 13–16 weekend 💜","Prom April 5","Cancun","Garba only"], answer:0 },
+        { clues:["Jhalak","Texas Dhoom","Soco","Valentine's"], options:["Feb 13-16 weekend 💜","Prom April 5","Cancun","Garba only"], answer:0 },
         { clues:["Pizookie","Bowlero","Jupiter's","Spring break"], options:["Spring break dates 🍕","Oct visit","Miller show","Love lock week"], answer:0 },
-        { clues:["DDN Legends","Penn Dhamaka","Austin","April 16–18"], options:["April Austin trip 🏆","Hoco at Rice","UH fair","Moon proposal"], answer:0 },
+        { clues:["DDN Legends","Penn Dhamaka","Austin","April 16-18"], options:["April Austin trip 🏆","Hoco at Rice","UH fair","Moon proposal"], answer:0 },
         { clues:["Starry photo","Miller","Pre-grad","Outdoor theatre"], options:["Miller Outdoor Theatre 🌟","Prom","Cancun","Discord"], answer:0 },
       ],
     },
   },
-  // 12 — TWO TRUTHS & A LIE 7pm
+  // 12. TWO TRUTHS & A LIE 7pm
   {
     id:12, type:"twotruths", emoji:"🎯", title:"Spot the Lie",
     unlockLabel:"7:00 PM",
-    teaser:"Two truths, one lie — about us.",
+    teaser:"Two truths, one lie, about us.",
     howToPlay:[
       "You get three statements about a memory.",
       "Two are true. One is the lie.",
@@ -556,16 +556,16 @@ const GAMES = [
     ],
     data:{
       easy:[
-        { topic:"The love lock — Aug 23, 2024",
+        { topic:"The love lock, Aug 23, 2024",
           statements:[
             "Krish got you a love lock that day.",
             "You put the lock on a bridge together.",
             "This happened before senior year started.",
-          ], lie:2 },
+          ], lie:1 },
         { topic:"Cancun",
           statements:[
             "Your first kiss was on that trip.",
-            "The ninja joke was a dad joke about Cancun — not his height.",
+            "The ninja joke was a dad joke about Cancun.",
             "The Grand Palace was the only place you went.",
           ], lie:2 },
       ],
@@ -576,53 +576,53 @@ const GAMES = [
             "Dil Se Naach and Urban Nutcracker were on your list.",
             "Discovery Green was where you only practiced, never performed.",
           ], lie:2 },
-        { topic:"Sept 20–21, 2025 visit",
+        { topic:"Sept 20-21, 2025 visit",
           statements:[
             "You had ramen at Ramen Tatsuya.",
-            "The visit was only a few hours — no overnight stay.",
+            "The visit was only a few hours, no overnight stay.",
             "You played air hockey together.",
           ], lie:1 },
         { topic:"Senior year 2024",
           statements:[
             "The moon-themed hoco proposal was Sept 21, 2024.",
             "Hasini's proposal was the day before yours.",
-            "Nov 8, 2024 you met at a UH fair.",
-          ], lie:1 },
+            "Nov 8, 2024 you met at Rice campus.",
+          ], lie:2 },
       ],
       hard:[
         { topic:"Prom & spring 2025",
           statements:[
-            "Prom was April 5, 2025 — green theme.",
+            "Prom was April 5, 2025: green theme.",
             "College visits happened before prom.",
             "Spring break dates included Pizookie and Bowlero.",
           ], lie:1 },
         { topic:"Halloweekend 2025",
           statements:[
             "You dressed as Mickey & Minnie.",
-            "North Italia was part of that weekend.",
-            "Kim Possible was your couples costume.",
+            "Kim Possible was one of your couples costumes.",
+            "North Italia was your Valentine's dinner that year.",
           ], lie:2 },
         { topic:"April 2025 Austin",
           statements:[
             "DDN Legends was part of that trip.",
-            "The trip was April 16–18.",
-            "Penn Dhamaka happened the same weekend in Austin.",
+            "Penn Dhamaka won DDN Legends that weekend.",
+            "You went to Velvet Taco on this April trip.",
           ], lie:2 },
       ],
     },
   },
-  // 13 — SUDOKU 8pm
-  // Topic: pure logic puzzle — no story content, just a break
+  // 13. SUDOKU 8pm
+  // Topic: pure logic puzzle, no story content, just a break
   {
     id:13, type:"sudoku", emoji:"🔢", title:"Love Logic",
     unlockLabel:"8:00 PM",
-    teaser:"Plain 4×4 sudoku — no story clues, just a breather.",
+    teaser:"Plain 4×4 sudoku, no story clues, just a breather.",
     howToPlay:[
       "Fill every empty cell with a number from 1 to 4.",
       "Each number must appear exactly once in each row.",
       "Each number must appear exactly once in each column.",
       "Each number must appear exactly once in each 2×2 box.",
-      "The pre-filled numbers are fixed — build around them.",
+      "The pre-filled numbers are fixed, build around them.",
     ],
     data:{
       easy:  { puzzle:[[1,0,0,4],[0,4,1,0],[0,1,4,0],[4,0,0,1]], solution:[[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]] },
@@ -630,15 +630,15 @@ const GAMES = [
       hard:  { puzzle:[[0,0,3,0],[0,3,0,0],[0,0,4,0],[0,4,0,0]], solution:[[2,4,3,1],[1,3,2,4],[3,1,4,2],[4,2,1,3]] },
     },
   },
-  // 14 — DEEP CUTS TRIVIA 9pm
-  // Topic: exact quotes, exact details, fine-grain facts — zero overlap with game 3
+  // 14. DEEP CUTS TRIVIA 9pm
+  // Topic: exact quotes, exact details, fine-grain facts, zero overlap with game 3
   {
     id:14, type:"trivia", emoji:"🫦", title:"Deep Cuts Trivia",
     unlockLabel:"9:00 PM",
     teaser:"Verbatim quotes. Exact details. You were there.",
     howToPlay:[
-      "These are the hard ones — exact quotes and tiny details.",
-      "Tap one of four answers — no typing on this one.",
+      "These are the hard ones, exact quotes and tiny details.",
+      "Tap one of four answers, no typing on this one.",
       "Read every option carefully before picking.",
       "Green = right ✅  Red = wrong ❌",
       "Next question loads automatically.",
@@ -654,44 +654,44 @@ const GAMES = [
           options:["July 4, 2024","Aug 23, 2024","Sept 20, 2024","Nov 8, 2024"], a:1 },
         { q:"What date was Hasini's hoco proposal?",
           options:["Sept 19, 2024","Sept 20, 2024","Sept 21, 2024","Sept 24, 2024"], a:1 },
-        { q:"Nov 8, 2024 — where did you meet up?",
+        { q:"Nov 8, 2024: where did you meet up?",
           options:["Rice campus","A UH fair","The Kroger lot","Miller Outdoor Theatre"], a:1 },
       ],
       medium:[
-        { q:"Summer 2024 — Fort Bend Transit ran between…",
+        { q:"Summer 2024: Fort Bend Transit ran between…",
           options:["Rice & downtown","UH Sugarland & Methodist","TAMU & Austin","Home & school"], a:1 },
         { q:"That summer, what did he wake up early to do with you?",
           options:["Garba practice","Ride/write the Fort Bend Transit bus","SAT prep","Naacho rehearsal"], a:1 },
-        { q:"Sept 24, 2024 Hoco — what was your color?",
+        { q:"Sept 24, 2024 Hoco, what was your color?",
           options:["Green","Blue","Purple","Gold"], a:2 },
-        { q:"Oct 2–5 visit — which taco spot did you hit?",
+        { q:"Oct 2-5 visit, which taco spot did you hit?",
           options:["Torchy's","Velvet Taco","Tacodeli","Chuy's"], a:1 },
-        { q:"Putt putt that trip — which was NOT one of the themed holes?",
+        { q:"Putt putt that trip, which was NOT one of the themed holes?",
           options:["Goat","Candy","Toilet","Dragon"], a:3 },
-        { q:"Halloweekend — one of your couple costumes was…",
+        { q:"Halloweekend, one of your couple costumes was…",
           options:["Barbie & Ken","Mickey & Minnie","Shrek & Fiona","Mario & Luigi"], a:1 },
-        { q:"Valentine's weekend — what comp did Texas Dhoom perform at?",
+        { q:"Valentine's weekend, what comp did Texas Dhoom perform at?",
           options:["Raas Rave","Jhalak","Garba on the Green","Fusion Fiesta"], a:1 },
-        { q:"Spring break date Mar 14 — where did you go?",
+        { q:"Spring break date Mar 14, where did you go?",
           options:["Topgolf","Bowlero + Jupiter's","Main Event","Dave & Buster's"], a:1 },
-        { q:"Senior year — where did you two drive to hang out and talk?",
+        { q:"Senior year, where did you two drive to hang out and talk?",
           options:["The mall parking lot","The parking lot near Kroger","Behind the school","A random gas station"], a:1 },
       ],
       hard:[
-        { q:"Sept 20–21, 2025 visit — how long were you together?",
+        { q:"Sept 20-21, 2025 visit, how long were you together?",
           options:["12 hours","24 hours","48 hours","One full weekend"], a:1 },
-        { q:"That same visit — which ramen spot?",
+        { q:"That same visit, which ramen spot?",
           options:["Ichiran","Tatsuya","Junbi","Kemuri"], a:1 },
-        { q:"Cuddle movie night Sept 20, 2025 — what did you watch?",
+        { q:"Cuddle movie night Sept 20, 2025: what did you watch?",
           options:["DDLJ","Saiyaara","Barfi","3 Idiots"], a:1 },
-        { q:"April Austin trip — who won DDN Legends?",
+        { q:"April Austin trip, who won DDN Legends?",
           options:["Texas Raas","Penn Dhamaka","GT Ramz","BU Bhangra"], a:1 },
-        { q:"Miller Outdoor Theatre 2025 — what made his favorite photo special?",
+        { q:"Miller Outdoor Theatre 2025: what made his favorite photo special?",
           options:["Sunset over water","Starry background","Fireworks finale","Rainbow stage lights"], a:1 },
       ],
     },
   },
-  // 15 — FINAL 10pm
+  // 15. FINAL 10pm
   {
     id:15, type:"final", emoji:"💜", title:"The Final Unlock",
     unlockLabel:"10:00 PM",
@@ -744,7 +744,7 @@ function WinCelebration({ pts, onContinue }) {
     <div style={{ textAlign:"center", padding:"28px 12px", animation:"popIn 0.5s ease" }}>
       <div style={{ fontSize:64, marginBottom:12, animation:"heartbeat 1.5s ease-in-out infinite" }}>🎉</div>
       <p style={{ color:T.mint, fontSize:22, fontWeight:900, margin:"0 0 6px" }}>You got it!</p>
-      <p style={{ color:T.textSub, fontSize:14, marginBottom:8 }}>Nice work — you earned</p>
+      <p style={{ color:T.textSub, fontSize:14, marginBottom:8 }}>Nice work, you earned</p>
       <p style={{ color:T.primary, fontSize:36, fontWeight:900, fontFamily:"'Nunito',sans-serif",
         margin:"8px 0 28px" }}>+{pts} pts</p>
       <Btn onClick={onContinue} full>Continue 💜</Btn>
@@ -791,7 +791,7 @@ function HowToPlayModal({ steps, onClose }) {
             </div>
           ))}
         </div>
-        <Btn onClick={onClose} full>Got it — let's play!</Btn>
+        <Btn onClick={onClose} full>Got it, let's play!</Btn>
       </div>
     </div>
   );
@@ -833,8 +833,8 @@ function Countdown({ index }) {
 // GAME COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ── WORDLE — full green/yellow/gray logic ────────────────────────────────────
-// Word stored in useRef ONLY — never in localStorage, never in window globals
+// ── WORDLE, full green/yellow/gray logic ────────────────────────────────────
+// Word stored in useRef ONLY, never in localStorage, never in window globals
 function WordleGame({ data, difficulty, onScore }) {
   const cfg = data[difficulty];
   const wordRef = useRef(cfg.word.toUpperCase()); // plaintext only in memory
@@ -962,12 +962,12 @@ function WordleGame({ data, difficulty, onScore }) {
   );
 }
 
-// ── CONNECTIONS — with one-away detection + animated group reveal ─────────────
+// ── CONNECTIONS, with one-away detection + animated group reveal ─────────────
 function ConnectionsGame({ data, difficulty, onScore }) {
   const { groups } = data[difficulty];
   const [items] = useState(()=>shuffleInPlace([...groups.flatMap(g=>g.items)]));
   const [selected, setSelected] = useState([]);
-  const [solvedIdx, setSolvedIdx] = useState([]); // indices into groups — all 4 required to score
+  const [solvedIdx, setSolvedIdx] = useState([]); // indices into groups, all 4 required to score
   const [mistakes, setMistakes] = useState(0);
   const [done, setDone] = useState(false);
   const [feedback, setFeedback] = useState(null); // null | "oneaway" | "wrong"
@@ -1019,12 +1019,12 @@ function ConnectionsGame({ data, difficulty, onScore }) {
         <div style={{ background:`${T.gold}22`, border:`1.5px solid ${T.gold}`, borderRadius:12,
           padding:"10px 14px", marginBottom:10, textAlign:"center", animation:"popIn 0.2s ease" }}>
           <p style={{ color:T.gold, fontWeight:800, fontSize:14, margin:0 }}>
-            💜 One away! You have exactly one wrong — swap one out.
+            💜 One away! You have exactly one wrong, swap one out.
           </p>
         </div>
       )}
 
-      {/* Solved groups — animated reveal */}
+      {/* Solved groups, animated reveal */}
       {solvedGroups.map(g=>(
         <div key={g.name} style={{ background:`${g.color}22`, border:`2px solid ${g.color}70`,
           borderRadius:14, padding:"12px 14px", marginBottom:8, textAlign:"center",
@@ -1063,7 +1063,7 @@ function ConnectionsGame({ data, difficulty, onScore }) {
         <Banner won message="All four groups found! 🎉"/>
       )}
       {done && solvedIdx.length<groups.length && (
-        <Banner won={false} message="Out of guesses — try again! 💜"/>
+        <Banner won={false} message="Out of guesses, try again! 💜"/>
       )}
     </div>
   );
@@ -1620,7 +1620,7 @@ function WordSearchGame({ data, difficulty, onScore }) {
   );
 }
 
-// ── PINPOINT (LinkedIn-style — what links these clues?) ───────────────────────
+// ── PINPOINT (LinkedIn-style, what links these clues?) ───────────────────────
 function PinpointGame({ data, difficulty, onScore }) {
   const qs=data[difficulty];
   const [idx,setIdx]=useState(0);
@@ -1650,7 +1650,7 @@ function PinpointGame({ data, difficulty, onScore }) {
 
   if(done) return <div style={{ textAlign:"center", animation:"popIn 0.5s ease" }}>
     <p style={{ fontSize:48, marginBottom:12 }}>📌</p>
-    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{score} pts — you see the links 💜</p>
+    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{score} pts, you see the links 💜</p>
   </div>;
 
   if(!q) return null;
@@ -1789,7 +1789,7 @@ function SudokuGame({ data, difficulty, onScore }) {
   return (
     <div style={{ textAlign:"center" }}>
       <p style={{ color:T.textMuted, fontSize:12, marginBottom:18 }}>
-        Fill 1–4. Each number once per row, column & 2×2 box.
+        Fill 1-4. Each number once per row, column & 2×2 box.
       </p>
       <div style={{ display:"inline-grid", gridTemplateColumns:"repeat(4,1fr)", gap:5,
         background:T.border, padding:5, borderRadius:14, marginBottom:18,
@@ -1817,7 +1817,7 @@ function SudokuGame({ data, difficulty, onScore }) {
 }
 
 // ── FINAL UNLOCK ──────────────────────────────────────────────────────────────
-// Krish's message to Nidhi — every word exactly as written, sent as outgoing iMessages
+// Krish's message to Nidhi, every word exactly as written, sent as outgoing iMessages
 const KRISH_MESSAGES = [
   "hoi",
   "omg i writing this one on a iphone looks so different",
@@ -1893,7 +1893,7 @@ function FinalUnlock({ totalScore }) {
   return (
     <div style={{ animation: "fadeIn 0.5s ease" }}>
 
-      {/* iMessage header — showing Krish sending to Nidhi */}
+      {/* iMessage header, showing Krish sending to Nidhi */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <div style={{ width: 56, height: 56, borderRadius: "50%", margin: "0 auto 10px",
           background: `linear-gradient(135deg,${T.primaryDim},${T.accent})`,
@@ -1904,7 +1904,7 @@ function FinalUnlock({ totalScore }) {
         <p style={{ color: T.textDim, fontSize: 11, margin: "2px 0 0" }}>iMessage · 4th anniversary</p>
       </div>
 
-      {/* Outgoing message bubbles — right aligned, iMessage blue-ish */}
+      {/* Outgoing message bubbles, right aligned, iMessage blue-ish */}
       <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 8 }}>
         {KRISH_MESSAGES.slice(0, visibleCount).map((msg, i) => (
           <div key={i} style={{ display: "flex", justifyContent: "flex-end", animation: "fadeUp 0.35s ease" }}>
@@ -1926,7 +1926,7 @@ function FinalUnlock({ totalScore }) {
           </div>
         ))}
 
-        {/* Typing indicator — right side (him typing) */}
+        {/* Typing indicator, right side (him typing) */}
         {typing && (
           <div style={{ display: "flex", justifyContent: "flex-end", animation: "fadeIn 0.2s ease" }}>
             <div style={{ background: `linear-gradient(135deg,${T.primaryDim},#5b21b6)`,
@@ -1944,7 +1944,7 @@ function FinalUnlock({ totalScore }) {
         <div ref={bottomRef}/>
       </div>
 
-      {/* Score card — appears after all messages */}
+      {/* Score card, appears after all messages */}
       {showScore && (
         <div style={{ background: `linear-gradient(135deg,${T.primaryDim}25,${T.accentSoft}15)`,
           borderRadius: 18, padding: 20, textAlign: "center",
@@ -1993,7 +1993,7 @@ function DevTools({ devMode, onToggleDev, onReset, onSkipSplash, state }) {
       background:`${T.bgCard}f2`, border:`2px solid ${T.gold}`, borderRadius:14,
       padding:"12px 14px", boxShadow:`0 8px 32px ${T.primaryDim}55`, backdropFilter:"blur(8px)" }}>
       <p style={{ color:T.gold, fontWeight:800, fontSize:12, margin:"0 0 8px", textAlign:"center" }}>
-        🛠 TEST MODE — only you see this
+        🛠 TEST MODE, only you see this
       </p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center" }}>
         {!state.started && (
@@ -2189,7 +2189,7 @@ export default function App() {
       onSkipSplash={skipSplash} onToggleDev={exitDevMode}/>
   );
 
-  // PIN gate — first thing she sees when she opens the link
+  // PIN gate, first thing she sees when she opens the link
   if (!unlocked) return (
     <PinLock onUnlock={() => {
       sessionStorage.setItem("_pin_ok","1");
@@ -2370,7 +2370,7 @@ export default function App() {
           {devMode&&(
             <p style={{ color:T.gold, fontSize:12, fontWeight:800, margin:"-14px 0 18px",
               background:`${T.gold}18`, border:`1px solid ${T.gold}55`, borderRadius:10, padding:"8px 12px" }}>
-              🛠 Test mode — all games open
+              🛠 Test mode, all games open
             </p>
           )}
           <div style={{ display:"flex", gap:0, background:T.bgCard, borderRadius:20,
