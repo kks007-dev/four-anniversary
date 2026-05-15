@@ -1356,53 +1356,141 @@ function TimelineGame({ data, difficulty, onScore }) {
 }
 
 // ── WORD SEARCH ───────────────────────────────────────────────────────────────
+const WS_DIRS=[[0,1],[1,0],[0,-1],[-1,0]];
+
+function wsCanPlace(g,word,r,c,dr,dc,gridSize){
+  for(let k=0;k<word.length;k++){
+    const nr=r+dr*k,nc=c+dc*k;
+    if(nr<0||nc<0||nr>=gridSize||nc>=gridSize)return false;
+    if(g[nr][nc]!==""&&g[nr][nc]!==word[k])return false;
+  }
+  return true;
+}
+
+function wsPlace(g,word,r,c,dr,dc){
+  for(let k=0;k<word.length;k++)g[r+dr*k][c+dc*k]=word[k];
+}
+
+function buildWordSearchGrid(words,gridSize){
+  const sorted=[...words].sort((a,b)=>b.length-a.length);
+  for(let attempt=0;attempt<120;attempt++){
+    const g=Array(gridSize).fill(null).map(()=>Array(gridSize).fill(""));
+    let ok=true;
+    for(const word of sorted){
+      const slots=[];
+      for(let r=0;r<gridSize;r++)for(let c=0;c<gridSize;c++)
+        for(const [dr,dc] of WS_DIRS)
+          if(wsCanPlace(g,word,r,c,dr,dc,gridSize))slots.push({r,c,dr,dc});
+      if(!slots.length){ok=false;break;}
+      shuffleInPlace(slots);
+      wsPlace(g,word,slots[0].r,slots[0].c,slots[0].dr,slots[0].dc);
+    }
+    if(ok){
+      for(let r=0;r<gridSize;r++)for(let c=0;c<gridSize;c++)
+        if(!g[r][c])g[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
+      return g;
+    }
+  }
+  const g=Array(gridSize).fill(null).map(()=>Array(gridSize).fill(""));
+  sorted.forEach((word,i)=>{
+    const r=Math.min(i,gridSize-1);
+    if(r+word.length<=gridSize)wsPlace(g,word,r,0,1,0);
+  });
+  for(let r=0;r<gridSize;r++)for(let c=0;c<gridSize;c++)
+    if(!g[r][c])g[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
+  return g;
+}
+
+function wordSearchLineCells(start,end,gridSize){
+  if(!start||!end)return[];
+  let dr=end.r-start.r,dc=end.c-start.c;
+  if(dr===0&&dc===0)return[`${start.r},${start.c}`];
+  if(dr!==0&&dc!==0){
+    if(Math.abs(dr)>=Math.abs(dc))dc=0;
+    else dr=0;
+  }
+  const stepR=dr===0?0:Math.sign(dr),stepC=dc===0?0:Math.sign(dc);
+  const len=Math.max(Math.abs(dr),Math.abs(dc));
+  const cells=[];
+  for(let i=0;i<=len;i++){
+    const r=start.r+stepR*i,c=start.c+stepC*i;
+    if(r<0||c<0||r>=gridSize||c>=gridSize)break;
+    cells.push(`${r},${c}`);
+  }
+  return cells;
+}
+
 function WordSearchGame({ data, difficulty, onScore }) {
   const {words,gridSize}=data[difficulty];
-  const [grid]=useState(()=>{
-    const g=Array(gridSize).fill(null).map(()=>Array(gridSize).fill(""));
-    const sorted=[...words].sort((a,b)=>b.length-a.length);
-    for (const word of sorted) {
-      let placed=false;
-      for (let a=0;a<6000 && !placed;a++){
-        const dir=Math.random()>0.5?"h":"v";
-        const row=Math.floor(Math.random()*(dir==="v"?gridSize-word.length:gridSize));
-        const col=Math.floor(Math.random()*(dir==="h"?gridSize-word.length:gridSize));
-        let ok=true;
-        for (let k=0;k<word.length;k++){const r=dir==="v"?row+k:row,c=dir==="h"?col+k:col;if(g[r][c]!==""&&g[r][c]!==word[k]){ok=false;break;}}
-        if (ok){
-          for(let k=0;k<word.length;k++){const r=dir==="v"?row+k:row,c=dir==="h"?col+k:col;g[r][c]=word[k];}
-          placed=true;
-        }
-      }
-    }
-    for(let r=0;r<gridSize;r++)for(let c=0;c<gridSize;c++)if(!g[r][c])g[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
-    return g;
-  });
-  const [sel,setSel]=useState(false);
-  const [start,setStart]=useState(null);
+  const [grid]=useState(()=>buildWordSearchGrid(words,gridSize));
   const [hl,setHl]=useState([]);
   const [foundCells,setFoundCells]=useState(new Set());
   const [found,setFound]=useState([]);
+  const selectingRef=useRef(false);
+  const startRef=useRef(null);
+  const scoredRef=useRef(false);
 
-  const key=(r,c)=>`${r},${c}`;
-  const getCells=(s,e)=>{
-    if(!s||!e)return[];
-    const cells=[],dr=Math.sign(e.r-s.r),dc=Math.sign(e.c-s.c);
-    if(dr===0&&dc===0)return[key(s.r,s.c)];
-    let r=s.r,c=s.c;
-    while(r!==e.r||c!==e.c){cells.push(key(r,c));r+=dr;c+=dc;}
-    cells.push(key(e.r,e.c));return cells;
+  const cellKey=(r,c)=>`${r},${c}`;
+  const cellFromTarget=t=>{
+    const el=t?.closest?.("[data-ws-cell]");
+    if(!el)return null;
+    return {r:Number(el.dataset.r),c:Number(el.dataset.c)};
   };
-  const checkWord=cells=>{
-    const str=cells.map(k=>{const[r,c]=k.split(",").map(Number);return g[r][c];}).join("");
-    const match=words.find(w=>w===str||w===str.split("").reverse().join(""));
-    if(match&&!found.includes(match)){
-      const nf=[...found,match];setFound(nf);
-      const nfc=new Set([...foundCells,...cells]);setFoundCells(nfc);
-      if(nf.length===words.length)onScore(words.length*(difficulty==="hard"?70:difficulty==="medium"?45:28));
-    }
+
+  const finishSelect=end=>{
+    if(!selectingRef.current||!startRef.current)return;
+    const cells=wordSearchLineCells(startRef.current,end,gridSize);
+    selectingRef.current=false;
+    startRef.current=null;
+    setHl([]);
+    if(cells.length<2)return;
+    const str=cells.map(k=>{const[r,c]=k.split(",").map(Number);return grid[r][c];}).join("");
+    const rev=str.split("").reverse().join("");
+    const match=words.find(w=>w===str||w===rev);
+    if(!match)return;
+    setFound(prev=>{
+      if(prev.includes(match))return prev;
+      const nf=[...prev,match];
+      setFoundCells(fc=>new Set([...fc,...cells]));
+      if(nf.length===words.length&&!scoredRef.current){
+        scoredRef.current=true;
+        onScore(words.length*(difficulty==="hard"?70:difficulty==="medium"?45:28));
+      }
+      return nf;
+    });
   };
-  const g=grid;
+
+  const onPointerDown=e=>{
+    if(e.button!==undefined&&e.button!==0)return;
+    const cell=cellFromTarget(e.target);
+    if(!cell)return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    selectingRef.current=true;
+    startRef.current=cell;
+    setHl([cellKey(cell.r,cell.c)]);
+  };
+
+  const onPointerMove=e=>{
+    if(!selectingRef.current||!startRef.current)return;
+    const cell=cellFromTarget(e.target);
+    if(!cell)return;
+    setHl(wordSearchLineCells(startRef.current,cell,gridSize));
+  };
+
+  const onPointerUp=e=>{
+    if(!selectingRef.current)return;
+    const cell=cellFromTarget(e.target)||startRef.current;
+    try{e.currentTarget.releasePointerCapture(e.pointerId);}catch{}
+    finishSelect(cell);
+  };
+
+  const onPointerCancel=()=>{
+    selectingRef.current=false;
+    startRef.current=null;
+    setHl([]);
+  };
+
   const cs=gridSize<=9?34:gridSize<=11?28:22;
 
   return (
@@ -1414,18 +1502,24 @@ function WordSearchGame({ data, difficulty, onScore }) {
           border:`1px solid ${found.includes(w)?T.primary:T.border}`,
           textDecoration:found.includes(w)?"line-through":"none" }}>{w}</span>)}
       </div>
-      <div style={{ display:"inline-block", userSelect:"none", cursor:"crosshair",
-        background:`${T.primaryDim}10`, borderRadius:14, padding:8 }} className="ns"
-        onMouseLeave={()=>{setSel(false);setHl([]);}}>
-        {g.map((row,r)=>(
+      <div
+        className="ns"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        style={{ display:"inline-block", userSelect:"none", touchAction:"none", cursor:"crosshair",
+          background:`${T.primaryDim}10`, borderRadius:14, padding:8 }}>
+        {grid.map((row,r)=>(
           <div key={r} style={{ display:"flex" }}>
             {row.map((cell,c)=>{
-              const k=key(r,c),isH=hl.includes(k),isF=foundCells.has(k);
+              const k=cellKey(r,c),isH=hl.includes(k),isF=foundCells.has(k);
               return (
-                <div key={c}
-                  onMouseDown={()=>{setSel(true);setStart({r,c});setHl([key(r,c)]);}}
-                  onMouseEnter={()=>{if(sel&&start)setHl(getCells(start,{r,c}));}}
-                  onMouseUp={()=>{checkWord(getCells(start,{r,c}));setSel(false);setHl([]);setStart(null);}}
+                <div
+                  key={c}
+                  data-ws-cell
+                  data-r={r}
+                  data-c={c}
                   style={{ width:cs, height:cs, display:"flex", alignItems:"center", justifyContent:"center",
                     fontSize:cs<=22?9:11, fontWeight:800,
                     color:isH?"#fff":isF?T.primary:T.textMuted,
