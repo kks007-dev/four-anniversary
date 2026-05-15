@@ -1744,6 +1744,14 @@ export default function App() {
     return()=>document.removeEventListener("contextmenu",prevent);
   },[]);
 
+  const recordScore=useCallback((gid,pts)=>{
+    setState(prev=>{
+      if (prev.scores&&prev.scores[gid]!==undefined) return prev; // write-once
+      const n={...prev,scores:{...(prev.scores||{}),[gid]:pts}};
+      saveState(n); return n;
+    });
+  },[]);
+
   // PIN gate — first thing she sees when she opens the link
   if (!unlocked) return (
     <PinLock onUnlock={() => {
@@ -1753,13 +1761,6 @@ export default function App() {
   );
 
   const totalScore=Object.values(state.scores||{}).reduce((a,b)=>a+b,0);
-  const recordScore=useCallback((gid,pts)=>{
-    setState(prev=>{
-      if (prev.scores&&prev.scores[gid]!==undefined) return prev; // write-once
-      const n={...prev,scores:{...(prev.scores||{}),[gid]:pts}};
-      saveState(n); return n;
-    });
-  },[]);
   const openGame=(game,i)=>{ if(!isUnlocked(i))return; setActiveGame({game,index:i}); setDifficulty(null); setShowHTP(false); };
 
   // ── SPLASH ────────────────────────────────────────────────────────────────
