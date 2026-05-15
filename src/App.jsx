@@ -131,21 +131,21 @@ const GAMES = [
       easy:{
         groups:[
           { name:"Places we went together 📍", color:"#f472b6",
-            items:["Cancun","Beaumont","Carnival","Hoco"] },
+            items:["Cancun","Rice campus","Kroger lot","UH fair"] },
           { name:"Words from the confession 💜", color:"#818cf8",
             items:["Blushy","Crushy","Mhmm","Gosh"] },
-          { name:"Things she said about his height 😭", color:"#f59e0b",
-            items:["Like a tree","So tall","A goofball","A ninja"] },
+          { name:"Cancun — laughs & moments 🌴", color:"#f59e0b",
+            items:["A ninja","Beach","Grand Palace","Pool"] },
           { name:"Naacho shows 💃", color:"#10b981",
-            items:["Dil Se Naach","Urban Nutcracker","Spring Show","Winter Showcase"] },
+            items:["Miller","Dil Se Naach","Urban Nutcracker","Discovery Green"] },
         ],
       },
       medium:{
         groups:[
           { name:"How they first started talking 💬", color:"#f472b6",
             items:["Discord","Geometry","Proofs","Conditionals"] },
-          { name:"Cancun moments 🌴", color:"#818cf8",
-            items:["First kiss","Beach","Grand Palace","Pool"] },
+          { name:"Cancun bucket list 🌴", color:"#818cf8",
+            items:["First kiss","Beach walk","Waterpark","Slow dancing"] },
           { name:"Senior year 2024 💜", color:"#f59e0b",
             items:["Love lock","Moon proposal","Hasini's proposal","UH fair"] },
           { name:"People in their story 👯", color:"#10b981",
@@ -217,7 +217,7 @@ const GAMES = [
     data:{
       easy:[
         { emojis:"🌴🏖️💋", answerHash:H("CANCUN"),      hint:"Their first trip together" },
-        { emojis:"🚌🎭🔥", answerHash:H("BEAUMONT"),     hint:"That unforgettable bus ride back" },
+        { emojis:"🚌🎭🔥", answerHash:H("BEAUMONT"),     hint:"A Naacho show — and that bus ride back" },
         { emojis:"🎡🌳☀️", answerHash:H("CARNIVAL"),     hint:"Elementary school volunteering, kinda" },
       ],
       medium:[
