@@ -874,8 +874,10 @@ function WordleGame({ data, difficulty, onScore }) {
     if (isCorrect) {
       setWon(true); setDone(true);
       onScore((difficulty==="hard"?350:difficulty==="medium"?200:100)+Math.max(0,(maxG-ng.length)*30));
-    } else if (ng.length>=maxG) { setDone(true); onScore(ng.length*12); }
+    } else if (ng.length>=maxG) { setDone(true); }
   };
+
+  const retry = () => { setGuesses([]); setCurrent(""); setDone(false); setWon(false); };
 
   const colorMap = {
     green:  { bg:"linear-gradient(135deg,#059669,#34d399)", border:"#34d399", glow:"0 0 14px #34d39955" },
@@ -956,6 +958,7 @@ function WordleGame({ data, difficulty, onScore }) {
       {done && (
         <div>
           <Banner won={won} message={won?`"${wordRef.current}" ✨`:`The word was "${wordRef.current}"`}/>
+          {!won && <Btn onClick={retry} full style={{ marginTop:16 }}>Try Again 💜</Btn>}
         </div>
       )}
     </div>
@@ -1012,6 +1015,14 @@ function ConnectionsGame({ data, difficulty, onScore }) {
     }
   };
 
+  const retry = () => {
+    setMistakes(0);
+    setDone(false);
+    setSelected([]);
+    setFeedback(null);
+    setWrongAnim(false);
+  };
+
   return (
     <div>
       {/* One-away banner */}
@@ -1053,7 +1064,7 @@ function ConnectionsGame({ data, difficulty, onScore }) {
       </div>
 
       <div style={{ display:"flex", gap:12, alignItems:"center", justifyContent:"center" }}>
-        <Btn onClick={submit} disabled={selected.length!==4}>Submit</Btn>
+        <Btn onClick={submit} disabled={selected.length!==4||done}>Submit</Btn>
         <span style={{ fontSize:18 }}>
           {"💜".repeat(Math.max(0,4-mistakes))}{"🖤".repeat(mistakes)}
         </span>
@@ -1063,7 +1074,10 @@ function ConnectionsGame({ data, difficulty, onScore }) {
         <Banner won message="All four groups found! 🎉"/>
       )}
       {done && solvedIdx.length<groups.length && (
-        <Banner won={false} message="Out of guesses, try again! 💜"/>
+        <>
+          <Banner won={false} message="Out of guesses, try again! 💜"/>
+          <Btn onClick={retry} full style={{ marginTop:16 }}>Try Again 💜</Btn>
+        </>
       )}
     </div>
   );
@@ -1080,7 +1094,13 @@ function TriviaGame({ data, difficulty, onScore }) {
   const pick = i => {
     if (chosen!==null) return;
     setChosen(i);
-    const pts=i===qs[idx].a?(difficulty==="hard"?70:difficulty==="medium"?45:25):0, ns=score+pts;
+    const correct = i===qs[idx].a;
+    if (!correct) {
+      setTimeout(()=>setChosen(null), 1100);
+      return;
+    }
+    const pts = difficulty==="hard"?70:difficulty==="medium"?45:25;
+    const ns = score + pts;
     setTimeout(()=>{
       if (idx+1>=qs.length){setDone(true);onScore(ns);}
       else{setIdx(idx+1);setChosen(null);setScore(ns);}
@@ -1137,17 +1157,20 @@ function EmojiGame({ data, difficulty, onScore }) {
 
   const submit = () => {
     const ok=checkAnswer(input,puzzles[idx].answerHashes);
-    setFb(ok); const nr=[...results,ok];
+    setFb(ok);
+    if (!ok) { setTimeout(()=>setFb(null), 1100); return; }
+    const nr=[...results, true];
+    const ptsEach = difficulty==="hard"?90:difficulty==="medium"?55:35;
     setTimeout(()=>{
       setFb(null); setInput("");
-      if (idx+1>=puzzles.length){setDone(true);onScore(nr.filter(Boolean).length*(difficulty==="hard"?90:difficulty==="medium"?55:35));}
+      if (idx+1>=puzzles.length){setDone(true);onScore(nr.length*ptsEach);}
       else{setIdx(idx+1);setResults(nr);}
     },800);
   };
 
   if (done) return <div style={{ textAlign:"center", animation:"popIn 0.5s ease" }}>
     <p style={{ fontSize:52, marginBottom:12 }}>🎊</p>
-    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{results.filter(Boolean).length}/{puzzles.length} correct!</p>
+    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{puzzles.length}/{puzzles.length} correct!</p>
   </div>;
 
   const p=puzzles[idx];
@@ -1233,11 +1256,15 @@ function LyricsGame({ data, difficulty, onScore }) {
   const [results,setResults]=useState([]);
 
   const [finalPts,setFinalPts]=useState(null);
+  const allCorrect = submitted && results.length>0 && results.every(Boolean);
   const submit=()=>{
     const res=puzzles.map((p,i)=>checkAnswer(answers[i],p.answerHashes));
     setResults(res); setSubmitted(true);
-    setFinalPts(res.filter(Boolean).length*(difficulty==="hard"?90:difficulty==="medium"?55:35));
+    if (res.every(Boolean)) {
+      setFinalPts(puzzles.length*(difficulty==="hard"?90:difficulty==="medium"?55:35));
+    }
   };
+  const retry=()=>{ setSubmitted(false); setResults([]); setFinalPts(null); };
 
   return (
     <div>
@@ -1264,6 +1291,12 @@ function LyricsGame({ data, difficulty, onScore }) {
         );
       })}
       {!submitted&&<Btn onClick={submit} full>Submit All 🎵</Btn>}
+      {submitted&&!allCorrect&&(
+        <>
+          <Banner won={false} message="Fix the red ones and try again 💜"/>
+          <Btn onClick={retry} full style={{ marginTop:16 }}>Try Again</Btn>
+        </>
+      )}
       {submitted&&finalPts!==null&&(
         <Btn onClick={()=>onScore(finalPts)} full style={{ marginTop:16 }}>Continue 💜</Btn>
       )}
@@ -1348,17 +1381,19 @@ function AnagramGame({ data, difficulty, onScore }) {
 
   const submit=()=>{
     const ok=checkAnswer(input,puzzles[idx].answerHashes);
-    setFb(ok); const nr=[...results,ok];
+    setFb(ok);
+    if (!ok) { setTimeout(()=>setFb(null), 1100); return; }
+    const nr=[...results, true];
     setTimeout(()=>{
       setFb(null); setInput("");
-      if (idx+1>=puzzles.length){setDone(true);onScore(nr.filter(Boolean).length*90);}
+      if (idx+1>=puzzles.length){setDone(true);onScore(nr.length*90);}
       else{setIdx(idx+1);setResults(nr);}
     },750);
   };
 
   if (done) return <div style={{ textAlign:"center", animation:"popIn 0.5s ease" }}>
     <p style={{ fontSize:48, margin:"16px 0" }}>🔀</p>
-    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{results.filter(Boolean).length}/{puzzles.length} correct!</p>
+    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{puzzles.length}/{puzzles.length} correct!</p>
   </div>;
 
   const p=puzzles[idx];
@@ -1389,11 +1424,12 @@ function TimelineGame({ data, difficulty, onScore }) {
   const [finalPts,setFinalPts]=useState(null);
 
   const move=(i,d)=>{const n=[...order],j=i+d;if(j<0||j>=n.length)return;[n[i],n[j]]=[n[j],n[i]];setOrder(n);};
+  const allCorrect = order.every((e,i)=>e.text===events[i].text);
   const check=()=>{
     setSubmitted(true);
-    let pts=0;order.forEach((e,i)=>{if(e.text===events[i].text)pts+=Math.round(200/events.length);});
-    setFinalPts(pts);
+    if (allCorrect) setFinalPts(200);
   };
+  const retry=()=>{ setSubmitted(false); setFinalPts(null); };
 
   return (
     <div>
@@ -1430,7 +1466,10 @@ function TimelineGame({ data, difficulty, onScore }) {
         })}
       </div>
       {!submitted&&<Btn onClick={check} full style={{ marginTop:16 }}>Lock In Order ✓</Btn>}
-      {submitted&&<Banner won={order.every((e,i)=>e.text===events[i].text)} message="Our story, in order 💜"/>}
+      {submitted&&<Banner won={allCorrect} message={allCorrect?"Our story, in order 💜":"Not quite, keep adjusting! 💜"}/>}
+      {submitted&&!allCorrect&&(
+        <Btn onClick={retry} full style={{ marginTop:16 }}>Try Again</Btn>
+      )}
       {submitted&&finalPts!==null&&(
         <Btn onClick={()=>onScore(finalPts)} full style={{ marginTop:16 }}>Continue 💜</Btn>
       )}
@@ -1641,7 +1680,13 @@ function PinpointGame({ data, difficulty, onScore }) {
   const pick=i=>{
     if(chosen!==null||!q) return;
     setChosen(i);
-    const pts=i===q.answer?(difficulty==="hard"?70:difficulty==="medium"?45:28):0, ns=score+pts;
+    const correct = i===q.answer;
+    if (!correct) {
+      setTimeout(()=>setChosen(null), 1100);
+      return;
+    }
+    const pts = difficulty==="hard"?70:difficulty==="medium"?45:28;
+    const ns = score + pts;
     setTimeout(()=>{
       if(idx+1>=qs.length){setDone(true);onScore(ns);}
       else{setIdx(idx+1);setChosen(null);setScore(ns);}
@@ -1710,13 +1755,16 @@ function TwoTruthsGame({ data, difficulty, onScore }) {
     if(chosen!==null)return;
     setChosen(i);
     const ok=i===rounds[idx].lie;
-    const nr=[...results,ok];
+    if (!ok) {
+      setTimeout(()=>setChosen(null), 1100);
+      return;
+    }
+    const nr=[...results, true];
+    const ptsEach = difficulty==="hard"?95:difficulty==="medium"?75:60;
     setTimeout(()=>{
       if(idx+1>=rounds.length){
-        const right=nr.filter(Boolean).length;
-        const pts=difficulty==="hard"?right*95:difficulty==="medium"?right*75:right*60;
         setDone(true);
-        onScore(pts);
+        onScore(nr.length*ptsEach);
       }else{
         setIdx(idx+1);
         setChosen(null);
@@ -1730,7 +1778,7 @@ function TwoTruthsGame({ data, difficulty, onScore }) {
     return (
       <div style={{ textAlign:"center", animation:"popIn 0.5s ease", padding:"16px 0" }}>
         <p style={{ fontSize:48, marginBottom:12 }}>🎯</p>
-        <p style={{ color:T.primary, fontSize:22, fontWeight:900 }}>{right}/{rounds.length} lies spotted</p>
+        <p style={{ color:T.primary, fontSize:22, fontWeight:900 }}>{rounds.length}/{rounds.length} lies spotted</p>
         <p style={{ color:T.textMuted, fontSize:14, marginTop:8 }}>you know our story 💜</p>
       </div>
     );
@@ -1780,11 +1828,12 @@ function SudokuGame({ data, difficulty, onScore }) {
     const v=parseInt(val)||0;if(v<0||v>4)return;
     const ng=grid.map(row=>[...row]);ng[r][c]=v;setGrid(ng);
   };
+  const perfect = grid.every((row,r)=>row.every((cell,c)=>cell===solution[r][c]));
   const check=()=>{
     setChecked(true);
-    let correct=0;grid.forEach((row,r)=>row.forEach((cell,c)=>{if(cell===solution[r][c])correct++;}));
-    setFinalPts(Math.round((correct/16)*320));
+    if (perfect) setFinalPts(320);
   };
+  const retry=()=>{ setChecked(false); setFinalPts(null); };
 
   return (
     <div style={{ textAlign:"center" }}>
@@ -1808,7 +1857,10 @@ function SudokuGame({ data, difficulty, onScore }) {
       </div>
       <br/>
       {!checked&&<Btn onClick={check}>Check Answer ✓</Btn>}
-      {checked&&<Banner won={grid.every((row,r)=>row.every((cell,c)=>cell===solution[r][c]))} message="Perfect solve! 🔢"/>}
+      {checked&&<Banner won={perfect} message={perfect?"Perfect solve! 🔢":"Keep going, fix the red cells 💜"}/>}
+      {checked&&!perfect&&(
+        <Btn onClick={retry} style={{ marginTop:16 }}>Keep Trying</Btn>
+      )}
       {checked&&finalPts!==null&&(
         <Btn onClick={()=>onScore(finalPts)} style={{ marginTop:16 }}>Continue 💜</Btn>
       )}
