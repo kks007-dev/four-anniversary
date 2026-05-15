@@ -12,8 +12,44 @@ function djb2(str) {
   for (let i = 0; i < str.length; i++) h = (h * 33) ^ str.charCodeAt(i);
   return (h >>> 0).toString(36);
 }
-const hashAnswer = str => djb2(str.trim().toUpperCase());
-const checkAnswer = (input, hash) => hashAnswer(input) === hash;
+function normalizeAnswer(str) {
+  if (!str || typeof str !== "string") return "";
+  return str
+    .trim()
+    .toUpperCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[''`]/g, "'")
+    .replace(/[^A-Z0-9\s']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** One or more accepted spellings → hash list for checkAnswer */
+const accept = (...variants) => {
+  const seen = new Set();
+  const hashes = [];
+  for (const v of variants) {
+    const n = normalizeAnswer(v);
+    if (!n) continue;
+    for (const form of [n, n.replace(/\s/g, "")]) {
+      if (!form) continue;
+      const h = djb2(form);
+      if (!seen.has(h)) {
+        seen.add(h);
+        hashes.push(h);
+      }
+    }
+  }
+  return hashes;
+};
+
+const checkAnswer = (input, expected) => {
+  const hashes = Array.isArray(expected) ? expected : [expected];
+  const n = normalizeAnswer(input);
+  if (!n || !hashes.length) return false;
+  return [n, n.replace(/\s/g, "")].some(form => hashes.includes(djb2(form)));
+};
 const encodeState = obj => { try { return btoa(JSON.stringify(obj)); } catch { return ""; } };
 const decodeState = str => { try { return JSON.parse(atob(str)); } catch { return {}; } };
 const STORE_KEY = "_us_v5";
@@ -92,7 +128,7 @@ const CSS = `
 // ─── GAME DATA ────────────────────────────────────────────────────────────────
 // RULE: zero overlapping facts across all 15 games. Each memory lives in exactly one game.
 // Wordle: stores PLAINTEXT word — only ever in memory (useRef), never in localStorage.
-const H = hashAnswer;
+// Typed-answer games use accept(...) so spacing/caps/punctuation don't matter.
 
 const GAMES = [
   // 1 — WORDLE 8am
@@ -173,7 +209,7 @@ const GAMES = [
     unlockLabel:"10:00 AM",
     teaser:"Our story. Shared memories. Real ones.",
     howToPlay:[
-      "Read the question. Pick one of four answers.",
+      "Tap one of four answers — no typing on this one.",
       "Green = correct ✅   Red = wrong ❌",
       "Next question loads automatically after your pick.",
       "More points for harder difficulties.",
@@ -227,23 +263,23 @@ const GAMES = [
       "Look at the emoji sequence and figure out the memory it represents.",
       "Type your answer and press Enter or Go.",
       "The hint gives you a nudge if you're stuck.",
-      "Capitalization doesn't matter — just spell it right!",
+      "Type your best guess — caps, spacing, and punctuation don't matter.",
     ],
     data:{
       easy:[
-        { emojis:"🌴🏖️💋", answerHash:H("CANCUN"),      hint:"Their first trip together" },
-        { emojis:"🚌🎭🔥", answerHash:H("BEAUMONT"),     hint:"A Naacho show — and that bus ride back" },
-        { emojis:"🎡🌳☀️", answerHash:H("CARNIVAL"),     hint:"Elementary school volunteering, kinda" },
+        { emojis:"🌴🏖️💋", answerHashes:accept("CANCUN"),      hint:"Their first trip together" },
+        { emojis:"🚌🎭🔥", answerHashes:accept("BEAUMONT"),     hint:"A Naacho show — and that bus ride back" },
+        { emojis:"🎡🌳☀️", answerHashes:accept("CARNIVAL"),     hint:"Elementary school volunteering, kinda" },
       ],
       medium:[
-        { emojis:"🔒💕✨",   answerHash:H("LOVE LOCK"),       hint:"Aug 23, 2024 — he got you one" },
-        { emojis:"🌙💍🌃",   answerHash:H("MOON THEMED"),     hint:"Sept 21, 2024 — his hoco proposal" },
-        { emojis:"🚌📝🏥",   answerHash:H("FORT BEND TRANSIT"), hint:"Summer — bus from UH Sugarland to Methodist" },
+        { emojis:"🔒💕✨",   answerHashes:accept("LOVE LOCK", "LOVELOCK"), hint:"Aug 23, 2024 — he got you one" },
+        { emojis:"🌙💍🌃",   answerHashes:accept("MOON THEMED", "MOON", "MOON THEME"), hint:"Sept 21, 2024 — his hoco proposal" },
+        { emojis:"🚌📝🏥",   answerHashes:accept("FORT BEND TRANSIT", "FORT BEND"), hint:"Summer — bus from UH Sugarland to Methodist" },
       ],
       hard:[
-        { emojis:"🅿️🛒🌙",     answerHash:H("KROGER PARKING LOT"), hint:"Senior year — where you'd drive to talk" },
-        { emojis:"💜🍚📸",     answerHash:H("VELVET TACO"),        hint:"Oct visit — that Austin taco spot" },
-        { emojis:"🎭⭐🌌",     answerHash:H("MILLER OUTDOOR THEATRE"), hint:"Pre-grad show — your favorite starry pic" },
+        { emojis:"🅿️🛒🌙",     answerHashes:accept("KROGER PARKING LOT", "KROGER", "KROGER LOT"), hint:"Senior year — where you'd drive to talk" },
+        { emojis:"💜🍚📸",     answerHashes:accept("VELVET TACO", "VELVET"), hint:"Oct visit — that Austin taco spot" },
+        { emojis:"🎭⭐🌌",     answerHashes:accept("MILLER OUTDOOR THEATRE", "MILLER OUTDOOR", "MILLER"), hint:"Pre-grad show — your favorite starry pic" },
       ],
     },
   },
@@ -276,26 +312,27 @@ const GAMES = [
       "Fill in the missing word for each line.",
       "The blanks connect to real songs — or real things he said.",
       "Type your answer in the box below each lyric.",
+      "Caps and extra spaces are fine — if it's the right word, it counts.",
       "Submit all at once when you're done.",
       "Each correct answer = points 🎵",
     ],
     data:{
       easy:[
-        { line:"Can't help falling in ___ with you",   answerHash:H("LOVE"),   song:"Elvis" },
-        { line:"I've loved you for a thousand ___",     answerHash:H("YEARS"),  song:"Christina Perri" },
-        { line:"All of me loves all of ___",            answerHash:H("YOU"),    song:"John Legend" },
+        { line:"Can't help falling in ___ with you",   answerHashes:accept("LOVE"),   song:"Elvis" },
+        { line:"I've loved you for a thousand ___",     answerHashes:accept("YEARS"),  song:"Christina Perri" },
+        { line:"All of me loves all of ___",            answerHashes:accept("YOU"),    song:"John Legend" },
       ],
       medium:[
-        { line:"We found love in a ___ place",          answerHash:H("HOPELESS"), song:"Rihanna" },
-        { line:"Tum hi ho, ab mera kya ___",             answerHash:H("HOGA"),     song:"Aashiqui 2" },
-        { line:"Channa mereya, ___ mereya",              answerHash:H("CHANNA"),   song:"ADHM" },
+        { line:"We found love in a ___ place",          answerHashes:accept("HOPELESS"), song:"Rihanna" },
+        { line:"Tum hi ho, ab mera kya ___",             answerHashes:accept("HOGA"),     song:"Aashiqui 2" },
+        { line:"Channa mereya, ___ mereya",              answerHashes:accept("CHANNA"),   song:"ADHM" },
       ],
       hard:[
         { line:"If I'm from your imagination then you must be something my mind could never ___",
-                                                         answerHash:H("IMAGINE"),  song:"Krish, Feb 21 2022 😭" },
-        { line:"Ik vaari aa, ___ mujhse milne aa",       answerHash:H("ROZ"),      song:"Raabta" },
+                                                         answerHashes:accept("IMAGINE"),  song:"Krish, Feb 21 2022 😭" },
+        { line:"Ik vaari aa, ___ mujhse milne aa",       answerHashes:accept("ROZ"),      song:"Raabta" },
         { line:"Little did they know, how ___ they'd become",
-                                                         answerHash:H("SPECIAL"),  song:"Nidhi's poem 🥹" },
+                                                         answerHashes:accept("SPECIAL"),  song:"Nidhi's poem 🥹" },
       ],
     },
   },
@@ -328,23 +365,24 @@ const GAMES = [
       "The letters shown spell a real word — just scrambled.",
       "Each word connects to your story in some way.",
       "Type your answer and press Enter or →",
+      "Caps and spacing don't matter — same word = correct.",
       "One wrong won't end it — you get all 3 puzzles.",
     ],
     data:{
       easy:[
-        { scrambled:"OAANCH",       answerHash:H("NAACHO"),      clue:"Your dance team" },
-        { scrambled:"NUCANC",        answerHash:H("CANCUN"),      clue:"First trip ever 🌴" },
-        { scrambled:"FEOCNOSSNI",    answerHash:H("CONFESSION"),  clue:"Mar 19, 2022 💜" },
+        { scrambled:"OAANCH",       answerHashes:accept("NAACHO"),      clue:"Your dance team" },
+        { scrambled:"NUCANC",        answerHashes:accept("CANCUN"),      clue:"First trip ever 🌴" },
+        { scrambled:"FEOCNOSSNI",    answerHashes:accept("CONFESSION"),  clue:"Mar 19, 2022 💜" },
       ],
       medium:[
-        { scrambled:"NOOM",          answerHash:H("MOON"),         clue:"His hoco proposal theme 🌙" },
-        { scrambled:"KCOLC",         answerHash:H("LOCK"),         clue:"Aug 23, 2024 — love ___" },
-        { scrambled:"TSITDOHEM",     answerHash:H("METHODIST"),     clue:"Fort Bend Transit stop (with UH Sugarland)" },
+        { scrambled:"NOOM",          answerHashes:accept("MOON"),         clue:"His hoco proposal theme 🌙" },
+        { scrambled:"KCOLC",         answerHashes:accept("LOCK"),         clue:"Aug 23, 2024 — love ___" },
+        { scrambled:"TSITDOHEM",     answerHashes:accept("METHODIST"),     clue:"Fort Bend Transit stop (with UH Sugarland)" },
       ],
       hard:[
-        { scrambled:"BEINDSRUCELI",  answerHash:H("INDESCRIBABLE"), clue:"What she called him" },
-        { scrambled:"HTEYBIYDALKRU", answerHash:H("BLUSHYKRISHY"),  clue:"The phrase she used on Mar 19 😭" },
-        { scrambled:"RGEBOMETY",     answerHash:H("GEOMETRY"),      clue:"How it all started" },
+        { scrambled:"BEINDSRUCELI",  answerHashes:accept("INDESCRIBABLE"), clue:"What she called him" },
+        { scrambled:"HTEYBIYDALKRU", answerHashes:accept("BLUSHYKRISHY"),  clue:"The phrase she used on Mar 19 😭" },
+        { scrambled:"RGEBOMETY",     answerHashes:accept("GEOMETRY"),      clue:"How it all started" },
       ],
     },
   },
@@ -424,37 +462,36 @@ const GAMES = [
       hard:  { words:["JHALAK","KROGER","MICKEY","NORTH","PENN","METHODIST"], gridSize:13 },
     },
   },
-  // 11 — WOULD HE RATHER 6pm
-  // Topic: his genuine preferences — different angles from trivia game
+  // 11 — PINPOINT (LinkedIn-style) 6pm
+  // Topic: what connects these four memories — our story categories
   {
-    id:11, type:"wouldherather", emoji:"🤔", title:"Would He Rather?",
+    id:11, type:"pinpoint", emoji:"📌", title:"What Links Us?",
     unlockLabel:"6:00 PM",
-    teaser:"I already answered. Predict me.",
+    teaser:"Like LinkedIn Pinpoint — what connects these clues?",
     howToPlay:[
-      "Each round shows two options.",
-      "Pick what you think HE would choose.",
-      "Green = you got it! Red = try again next time.",
-      "Closer to his brain = more points.",
-      "Some of these are tricky 😈",
+      "Four clue tiles appear — they all share one link.",
+      "Pick what connects them (our memory, place, or chapter).",
+      "Green = you got the link! Red = not quite.",
+      "Tap an answer — no typing needed.",
     ],
     data:{
       easy:[
-        { q:"Would Krish rather…", a:"Night drive 🚗", b:"Movie marathon 🎬", answer:0 },
-        { q:"Would Krish rather…", a:"Cancun again 🌴", b:"Somewhere brand new ✈️", answer:0 },
-        { q:"Would Krish rather…", a:"Watch Naacho practice", b:"Be in Naacho practice", answer:1 },
+        { clues:["Cancun","Beach","Pool","First kiss"], options:["Cancun trip 🌴","Naacho season","Prom night","Discord era"], answer:0 },
+        { clues:["Miller","Dil Se Naach","Urban Nutcracker","Discovery Green"], options:["Naacho shows 💃","Cancun","Senior prom","Garba weekend"], answer:0 },
+        { clues:["Discord","Geometry","Proofs","Conditionals"], options:["How we started talking 📐","Cancun","Love lock","UH fair"], answer:0 },
       ],
       medium:[
-        { q:"Would Krish rather…", a:"Velvet Taco again 🌮", b:"North Italia again 🍝", answer:0 },
-        { q:"Would Krish rather…", a:"UT garba night", b:"A&M garba night", answer:0 },
-        { q:"Would Krish rather…", a:"Air hockey rematch", b:"Putt putt (goat hole edition)", answer:0 },
-        { q:"Would Krish rather…", a:"Ramen at Tatsuya", b:"Fake BJ's pizookie", answer:0 },
+        { clues:["Love lock","Moon proposal","Hasini's proposal","UH fair"], options:["Senior year 2024 💜","Freshman year visits","Cancun","Naacho only"], answer:0 },
+        { clues:["Velvet Taco","UT garba","Putt putt","Air hockey"], options:["Oct 2025 Austin visit 🌮","Spring break","Prom weekend","Miller show"], answer:0 },
+        { clues:["Ramen Tatsuya","Bowling","24 hours","Air hockey"], options:["Sept 20–21, 2025 visit 💜","Halloweekend","Hoco week","Valentine's & Jhalak"], answer:0 },
+        { clues:["Kroger lot","Rice campus","UH fair","Methodist"], options:["Places we'd meet up 📍","Naacho shows","Cancun only","College classes"], answer:0 },
       ],
       hard:[
-        { q:"Would Krish rather…", a:"The Miller starry-background pic", b:"The Rice Hoco purple photos", answer:0 },
-        { q:"Would Krish rather…", a:"Mickey & Minnie Halloweekend", b:"Kim Possible & Ron", answer:0 },
-        { q:"Would Krish rather…", a:"Park at the Kroger lot and talk", b:"Random parking garage", answer:0 },
-        { q:"Would Krish rather…", a:"Watch her at Jhalak", b:"Skip the comp and just get food", answer:0 },
-        { q:"Would Krish rather…", a:"Another 24-hour visit", b:"Text about it until next time", answer:0 },
+        { clues:["Mickey & Minnie","North Italia","Kim Possible","Halloweekend"], options:["Halloweekend 2025 🎃","Jhalak weekend","DDN Legends trip","Fort Bend summer"], answer:0 },
+        { clues:["Jhalak","Texas Dhoom","Soco","Valentine's"], options:["Feb 13–16 weekend 💜","Prom April 5","Cancun","Garba only"], answer:0 },
+        { clues:["Pizookie","Bowlero","Jupiter's","Spring break"], options:["Spring break dates 🍕","Oct visit","Miller show","Love lock week"], answer:0 },
+        { clues:["DDN Legends","Penn Dhamaka","Austin","April 16–18"], options:["April Austin trip 🏆","Hoco at Rice","UH fair","Moon proposal"], answer:0 },
+        { clues:["Starry photo","Miller","Pre-grad","Outdoor theatre"], options:["Miller Outdoor Theatre 🌟","Prom","Cancun","Discord"], answer:0 },
       ],
     },
   },
@@ -493,7 +530,7 @@ const GAMES = [
   {
     id:13, type:"sudoku", emoji:"🔢", title:"Love Logic",
     unlockLabel:"8:00 PM",
-    teaser:"A mini 4×4 sudoku. Calm before the finale.",
+    teaser:"Plain 4×4 sudoku — no story clues, just a breather.",
     howToPlay:[
       "Fill every empty cell with a number from 1 to 4.",
       "Each number must appear exactly once in each row.",
@@ -515,6 +552,7 @@ const GAMES = [
     teaser:"Verbatim quotes. Exact details. You were there.",
     howToPlay:[
       "These are the hard ones — exact quotes and tiny details.",
+      "Tap one of four answers — no typing on this one.",
       "Read every option carefully before picking.",
       "Green = right ✅  Red = wrong ❌",
       "Next question loads automatically.",
@@ -971,7 +1009,7 @@ function EmojiGame({ data, difficulty, onScore }) {
   const [fb,setFb]=useState(null);
 
   const submit = () => {
-    const ok=checkAnswer(input,puzzles[idx].answerHash);
+    const ok=checkAnswer(input,puzzles[idx].answerHashes);
     setFb(ok); const nr=[...results,ok];
     setTimeout(()=>{
       setFb(null); setInput("");
@@ -1068,7 +1106,7 @@ function LyricsGame({ data, difficulty, onScore }) {
   const [results,setResults]=useState([]);
 
   const submit=()=>{
-    const res=puzzles.map((p,i)=>checkAnswer(answers[i],p.answerHash));
+    const res=puzzles.map((p,i)=>checkAnswer(answers[i],p.answerHashes));
     setResults(res); setSubmitted(true);
     onScore(res.filter(Boolean).length*(difficulty==="hard"?90:difficulty==="medium"?55:35));
   };
@@ -1171,7 +1209,7 @@ function AnagramGame({ data, difficulty, onScore }) {
   const [fb,setFb]=useState(null);
 
   const submit=()=>{
-    const ok=checkAnswer(input,puzzles[idx].answerHash);
+    const ok=checkAnswer(input,puzzles[idx].answerHashes);
     setFb(ok); const nr=[...results,ok];
     setTimeout(()=>{
       setFb(null); setInput("");
@@ -1346,17 +1384,28 @@ function WordSearchGame({ data, difficulty, onScore }) {
   );
 }
 
-// ── WOULD HE RATHER ───────────────────────────────────────────────────────────
-function WouldHeRatherGame({ data, difficulty, onScore }) {
+// ── PINPOINT (LinkedIn-style — what links these clues?) ───────────────────────
+function PinpointGame({ data, difficulty, onScore }) {
   const qs=data[difficulty];
   const [idx,setIdx]=useState(0);
   const [score,setScore]=useState(0);
   const [chosen,setChosen]=useState(null);
   const [done,setDone]=useState(false);
+  const [visibleClues,setVisibleClues]=useState(1);
+  const q=qs[idx];
+
+  useEffect(()=>{
+    setVisibleClues(1);
+    if(!q) return;
+    const timers=[];
+    for(let i=1;i<q.clues.length;i++) timers.push(setTimeout(()=>setVisibleClues(i+1),i*520));
+    return ()=>timers.forEach(clearTimeout);
+  },[idx,q?.clues?.length]);
 
   const pick=i=>{
-    if(chosen!==null)return;setChosen(i);
-    const pts=i===qs[idx].answer?(difficulty==="hard"?70:45):0, ns=score+pts;
+    if(chosen!==null||!q) return;
+    setChosen(i);
+    const pts=i===q.answer?(difficulty==="hard"?70:difficulty==="medium"?45:28):0, ns=score+pts;
     setTimeout(()=>{
       if(idx+1>=qs.length){setDone(true);onScore(ns);}
       else{setIdx(idx+1);setChosen(null);setScore(ns);}
@@ -1364,35 +1413,50 @@ function WouldHeRatherGame({ data, difficulty, onScore }) {
   };
 
   if(done) return <div style={{ textAlign:"center", animation:"popIn 0.5s ease" }}>
-    <p style={{ fontSize:48, marginBottom:12 }}>🤔</p>
-    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{score} pts — you know him 💜</p>
+    <p style={{ fontSize:48, marginBottom:12 }}>📌</p>
+    <p style={{ color:T.primary, fontSize:26, fontWeight:900 }}>{score} pts — you see the links 💜</p>
   </div>;
 
-  const q=qs[idx];
+  if(!q) return null;
+
   return (
     <div key={idx} style={{ animation:"fadeUp 0.35s ease" }}>
-      <p style={{ color:T.textMuted, fontSize:12, marginBottom:10, textAlign:"center" }}>Round {idx+1}/{qs.length}</p>
+      <p style={{ color:T.textMuted, fontSize:12, marginBottom:8, textAlign:"center" }}>
+        Round {idx+1}/{qs.length} · Pinpoint
+      </p>
       <div style={{ background:`${T.primaryDim}18`, borderRadius:16, padding:"18px 16px",
         marginBottom:16, border:`1.5px solid ${T.border}`, textAlign:"center" }}>
-        <p style={{ color:T.text, fontSize:17, fontWeight:700 }}>{q.q}</p>
+        <p style={{ color:T.textSub, fontSize:15, fontWeight:700 }}>What connects these?</p>
       </div>
-      <div style={{ display:"flex", gap:10 }}>
-        {[q.a,q.b].map((opt,i)=>{
-          let bg=`${T.primaryDim}18`,border=T.border,color=T.text,glow="none";
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:18 }}>
+        {(q.clues||[]).map((clue,i)=>(
+          <div key={`${clue}-${i}`} style={{
+            padding:"14px 10px", borderRadius:12, textAlign:"center", fontSize:13, fontWeight:800,
+            fontFamily:"'Nunito',sans-serif",
+            background:i<visibleClues?`linear-gradient(135deg,${T.primaryDim},#5b21b6)`:T.bgDeep,
+            color:i<visibleClues?"#fff":T.textDim,
+            border:`2px solid ${i<visibleClues?T.primary:T.border}`,
+            opacity:i<visibleClues?1:0.35, transition:"all 0.35s ease",
+            boxShadow:i<visibleClues?`0 4px 14px ${T.primaryDim}44`:"none",
+          }}>{i<visibleClues?clue:"···"}</div>
+        ))}
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        {(q.options||[]).map((opt,i)=>{
+          let bg=`${T.primaryDim}15`,border=T.border,color=T.text,glow="none";
           if(chosen!==null){
-            if(i===q.answer){bg=`${T.mint}18`;border=T.mint;color=T.mint;glow=`0 0 16px ${T.mint}44`;}
+            if(i===q.answer){bg=`${T.mint}18`;border=T.mint;color=T.mint;glow=`0 0 14px ${T.mint}44`;}
             else if(i===chosen){bg=`${T.rose}18`;border=T.rose;color=T.rose;}
           }
           return <button key={i} onClick={()=>pick(i)} className="ns"
-            style={{ flex:1, padding:"16px 10px", borderRadius:14, fontWeight:700,
-              background:bg, border:`2px solid ${border}`, color, cursor:"pointer",
-              fontSize:14, transition:"all 0.22s", lineHeight:1.4, boxShadow:glow,
-              fontFamily:"'Quicksand',sans-serif" }}>{opt}</button>;
+            style={{ padding:"13px 16px", borderRadius:13, textAlign:"left", background:bg,
+              border:`2px solid ${border}`, color, cursor:"pointer", fontSize:14, fontWeight:600,
+              transition:"all 0.22s", boxShadow:glow, fontFamily:"'Quicksand',sans-serif" }}>{opt}</button>;
         })}
       </div>
       {chosen!==null&&<p style={{ textAlign:"center", marginTop:12,
         color:chosen===q.answer?T.mint:T.rose, fontWeight:700 }}>
-        {chosen===q.answer?"✅ You know him!":q.answer===0?`❌ He'd choose "${q.a}"`:`❌ He'd choose "${q.b}"`}
+        {chosen===q.answer?"✅ That's the link!":`❌ The link was "${q.options[q.answer]}"`}
       </p>}
     </div>
   );
@@ -1644,7 +1708,7 @@ function GameRouter({ game, difficulty, onScore, scored, totalScore }) {
   const map={
     wordle:WordleGame, connections:ConnectionsGame, trivia:TriviaGame, emoji:EmojiGame,
     memory:MemoryGame, lyrics:LyricsGame, spellingbee:SpellingBeeGame, anagram:AnagramGame,
-    timeline:TimelineGame, wordsearch:WordSearchGame, wouldherather:WouldHeRatherGame,
+    timeline:TimelineGame, wordsearch:WordSearchGame, pinpoint:PinpointGame,
     caption:CaptionGame, sudoku:SudokuGame,
   };
   if (game.type==="final") return <FinalUnlock totalScore={totalScore}/>;
