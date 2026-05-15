@@ -56,6 +56,30 @@ const STORE_KEY = "_us_v5";
 const loadState = () => { try { return decodeState(localStorage.getItem(STORE_KEY) || ""); } catch { return {}; } };
 const saveState = s => { try { localStorage.setItem(STORE_KEY, encodeState(s)); } catch {} };
 
+const DIFFICULTIES = ["easy", "medium", "hard"];
+const scoreKey = (gid, diff) => `${gid}_${diff}`;
+const normalizeScores = (scores) => {
+  if (!scores) return {};
+  const out = { ...scores };
+  for (const [k, v] of Object.entries(scores)) {
+    if (/^\d+$/.test(k) && out[scoreKey(k, "easy")] === undefined
+        && out[scoreKey(k, "medium")] === undefined && out[scoreKey(k, "hard")] === undefined) {
+      out[scoreKey(k, "easy")] = v;
+      delete out[k];
+    }
+  }
+  return out;
+};
+const isDifficultyScored = (scores, gid, diff) => (scores || {})[scoreKey(gid, diff)] !== undefined;
+const gameProgress = (scores, gid) => {
+  const s = scores || {};
+  const done = DIFFICULTIES.filter(d => s[scoreKey(gid, d)] !== undefined).length;
+  return { done, total: DIFFICULTIES.length };
+};
+const isGameFullyComplete = (scores, gid) => gameProgress(scores, gid).done === DIFFICULTIES.length;
+const gameTotalPts = (scores, gid) =>
+  DIFFICULTIES.reduce((sum, d) => sum + ((scores || {})[scoreKey(gid, d)] || 0), 0);
+
 function shuffleInPlace(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -912,35 +936,48 @@ function ConnectionsGame({ data, difficulty, onScore }) {
   const { groups } = data[difficulty];
   const [items] = useState(()=>shuffleInPlace([...groups.flatMap(g=>g.items)]));
   const [selected, setSelected] = useState([]);
-  const [solved, setSolved] = useState([]);    // array of group names solved
+  const [solvedIdx, setSolvedIdx] = useState([]); // indices into groups — all 4 required to score
   const [mistakes, setMistakes] = useState(0);
   const [done, setDone] = useState(false);
   const [feedback, setFeedback] = useState(null); // null | "oneaway" | "wrong"
   const [wrongAnim, setWrongAnim] = useState(false);
+  const scoredRef = useRef(false);
 
-  const solvedGroups = groups.filter(g=>solved.includes(g.name));
-  const unsolved = items.filter(i=>!solvedGroups.flatMap(g=>g.items).includes(i));
+  const solvedGroups = solvedIdx.map(i=>groups[i]);
+  const solvedItems = new Set(solvedGroups.flatMap(g=>g.items));
+  const unsolved = items.filter(i=>!solvedItems.has(i));
 
   const toggle = item => {
-    if (solvedGroups.flatMap(g=>g.items).includes(item)) return;
+    if (solvedItems.has(item)) return;
     setSelected(p=>p.includes(item)?p.filter(x=>x!==item):p.length<4?[...p,item]:p);
   };
 
   const submit = () => {
-    if (selected.length!==4) return;
-    const match = groups.find(g=>g.items.every(i=>selected.includes(i)));
-    if (match) {
+    if (selected.length!==4 || done) return;
+    const gi = groups.findIndex(g=>g.items.every(i=>selected.includes(i)));
+    if (gi>=0 && !solvedIdx.includes(gi)) {
       setFeedback(null);
-      const ns=[...solved, match.name]; setSolved(ns); setSelected([]);
-      if (ns.length===groups.length) { setDone(true); onScore(Math.max(50,400-mistakes*60)); }
-    } else {
-      // Check one-away: is there a group where 3 of 4 selected items belong?
+      const ns=[...solvedIdx, gi];
+      setSolvedIdx(ns);
+      setSelected([]);
+      if (ns.length===groups.length) {
+        setDone(true);
+        if (!scoredRef.current) {
+          scoredRef.current=true;
+          onScore(Math.max(50,400-mistakes*60));
+        }
+      }
+    } else if (gi<0) {
       const isOneAway = groups.some(g=>selected.filter(s=>g.items.includes(s)).length===3);
       setFeedback(isOneAway?"oneaway":"wrong");
       setWrongAnim(true);
       setTimeout(()=>{ setWrongAnim(false); setFeedback(null); },900);
-      setMistakes(m=>m+1); setSelected([]);
-      if (mistakes>=3) { setDone(true); onScore(Math.max(0,60-mistakes*15)); }
+      setSelected([]);
+      setMistakes(m=>{
+        const next=m+1;
+        if (next>=4) setDone(true);
+        return next;
+      });
     }
   };
 
@@ -991,11 +1028,11 @@ function ConnectionsGame({ data, difficulty, onScore }) {
         </span>
       </div>
 
-      {done && solvedGroups.length===groups.length && (
+      {done && solvedIdx.length===groups.length && (
         <Banner won message="All four groups found! 🎉"/>
       )}
-      {done && solvedGroups.length<groups.length && (
-        <Banner won={false} message="Out of guesses — but you got some! 💜"/>
+      {done && solvedIdx.length<groups.length && (
+        <Banner won={false} message="Out of guesses — try again! 💜"/>
       )}
     </div>
   );
@@ -2034,7 +2071,11 @@ function PinLock({ onUnlock }) {
 export default function App() {
   const [devMode, setDevMode]      = useState(()=>readDevFromUrl());
   const [unlocked, setUnlocked]    = useState(()=>sessionStorage.getItem("_pin_ok")==="1"||readDevFromUrl());
-  const [state,setState]           = useState(()=>loadState());
+  const [state,setState]           = useState(()=>{
+    const s = loadState();
+    const scores = normalizeScores(s.scores);
+    return scores === s.scores ? s : { ...s, scores };
+  });
   const [activeGame,setActiveGame] = useState(null);
   const [difficulty,setDifficulty] = useState(null);
   const [showHTP,setShowHTP]       = useState(false);
@@ -2060,10 +2101,11 @@ export default function App() {
     }
   },[]);
 
-  const recordScore=useCallback((gid,pts)=>{
+  const recordScore=useCallback((gid,difficulty,pts)=>{
+    const key=scoreKey(gid,difficulty);
     setState(prev=>{
-      if (!devMode&&prev.scores&&prev.scores[gid]!==undefined) return prev;
-      const n={...prev,scores:{...(prev.scores||{}),[gid]:pts}};
+      if (!devMode&&prev.scores&&prev.scores[key]!==undefined) return prev;
+      const n={...prev,scores:{...(prev.scores||{}),[key]:pts}};
       saveState(n); return n;
     });
   },[devMode]);
@@ -2099,7 +2141,7 @@ export default function App() {
     }}/>
   );
 
-  const totalScore=Object.values(state.scores||{}).reduce((a,b)=>a+b,0);
+  const totalScore=Object.values(normalizeScores(state.scores)).reduce((a,b)=>a+b,0);
   const openGame=(game,i)=>{ if(!gameUnlocked(i))return; setActiveGame({game,index:i}); setDifficulty(null); setShowHTP(false); };
 
   // ── SPLASH ────────────────────────────────────────────────────────────────
@@ -2143,8 +2185,10 @@ export default function App() {
   // ── GAME VIEW ─────────────────────────────────────────────────────────────
   if (activeGame) {
     const {game,index}=activeGame;
-    const scored=(state.scores||{})[game.id]!==undefined;
-    const ts=Object.values(state.scores||{}).reduce((a,b)=>a+b,0);
+    const scores=normalizeScores(state.scores);
+    const prog=game.type==="final"?null:gameProgress(scores,game.id);
+    const diffScored=difficulty?isDifficultyScored(scores,game.id,difficulty):false;
+    const ts=Object.values(scores).reduce((a,b)=>a+b,0);
 
     return (
       <div style={{ minHeight:"100vh", background:T.bg, position:"relative" }}>
@@ -2171,15 +2215,19 @@ export default function App() {
               <h2 style={{ color:T.text, margin:0, fontSize:18, fontWeight:800 }}>{game.emoji} {game.title}</h2>
             </div>
             {/* How to play button */}
-            {game.howToPlay && (!scored||devMode) && (
+            {game.howToPlay && (!diffScored||devMode) && (
               <button onClick={()=>setShowHTP(true)} className="btn-press"
                 style={{ background:`${T.primaryDim}20`, border:`1.5px solid ${T.border}`, borderRadius:12,
                   color:T.textSub, padding:"8px 12px", cursor:"pointer", fontSize:12, fontWeight:700,
                   fontFamily:"'Quicksand',sans-serif" }}>📖 How</button>
             )}
-            {scored&&<div style={{ background:`${T.mint}20`, border:`1px solid ${T.mint}50`,
+            {difficulty&&diffScored&&<div style={{ background:`${T.mint}20`, border:`1px solid ${T.mint}50`,
               borderRadius:10, padding:"4px 10px", color:T.mint, fontSize:13, fontWeight:800 }}>
-              +{(state.scores||{})[game.id]}
+              +{scores[scoreKey(game.id,difficulty)]}
+            </div>}
+            {!difficulty&&prog&&prog.done>0&&<div style={{ background:`${T.mint}20`, border:`1px solid ${T.mint}50`,
+              borderRadius:10, padding:"4px 10px", color:T.mint, fontSize:13, fontWeight:800 }}>
+              {prog.done}/{prog.total}{gameTotalPts(scores,game.id)>0?` · ${gameTotalPts(scores,game.id)} pts`:""}
             </div>}
           </div>
 
@@ -2187,7 +2235,7 @@ export default function App() {
           {!difficulty && game.type!=="final" ? (
             <div style={{ padding:"0 20px", animation:"fadeUp 0.4s ease" }}>
               <p style={{ color:T.textSub, marginBottom:6, textAlign:"center", fontWeight:600, fontSize:15 }}>
-                Pick your difficulty ✨
+                {prog&&prog.done>0?`Pick your next difficulty (${prog.done}/${prog.total} done)`:"Pick your difficulty ✨"}
               </p>
               <p style={{ color:T.textMuted, textAlign:"center", fontSize:13, marginBottom:20 }}>
                 {game.teaser}
@@ -2195,20 +2243,28 @@ export default function App() {
               <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                 {[["easy","🟢 Easy","Warm up. No stress.",100,"#6ee7b7"],
                   ["medium","🟡 Medium","You'll actually have to think.",220,T.gold],
-                  ["hard","🔴 Hard","Deep cuts only.",380,T.rose]].map(([d,label,desc,pts,col])=>(
-                  <button key={d} onClick={()=>setDifficulty(d)} className="card-hover btn-press"
-                    style={{ background:`${T.primaryDim}15`, border:`2px solid ${T.border}`,
-                      borderRadius:18, padding:"18px 20px", textAlign:"left", cursor:"pointer",
+                  ["hard","🔴 Hard","Deep cuts only.",380,T.rose]].map(([d,label,desc,maxPts,col])=>{
+                  const done=isDifficultyScored(scores,game.id,d);
+                  const got=scores[scoreKey(game.id,d)];
+                  return (
+                  <button key={d} onClick={()=>(!done||devMode)&&setDifficulty(d)} className="card-hover btn-press"
+                    style={{ background:done?`${col}12`:`${T.primaryDim}15`, border:`2px solid ${done?col:T.border}`,
+                      borderRadius:18, padding:"18px 20px", textAlign:"left",
+                      cursor:done&&!devMode?"default":"pointer", opacity:done&&!devMode?0.72:1,
                       transition:"all 0.22s", fontFamily:"'Quicksand',sans-serif" }}
-                    onMouseEnter={e=>{e.currentTarget.style.borderColor=col;e.currentTarget.style.background=`${col}14`;e.currentTarget.style.boxShadow=`0 4px 18px ${col}30`;}}
-                    onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.background=`${T.primaryDim}15`;e.currentTarget.style.boxShadow="none";}}>
+                    onMouseEnter={e=>{if(done&&!devMode)return;e.currentTarget.style.borderColor=col;e.currentTarget.style.background=`${col}14`;e.currentTarget.style.boxShadow=`0 4px 18px ${col}30`;}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor=done?col:T.border;e.currentTarget.style.background=done?`${col}12`:`${T.primaryDim}15`;e.currentTarget.style.boxShadow="none";}}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                      <p style={{ color:T.text, fontWeight:800, margin:0, fontSize:16 }}>{label}</p>
-                      <span style={{ color:col, fontWeight:800, fontSize:13 }}>up to {pts} pts</span>
+                      <p style={{ color:T.text, fontWeight:800, margin:0, fontSize:16 }}>{label}{done?" ✓":""}</p>
+                      <span style={{ color:col, fontWeight:800, fontSize:13 }}>
+                        {done?`+${got} pts`:`up to ${maxPts} pts`}
+                      </span>
                     </div>
-                    <p style={{ color:T.textMuted, margin:0, fontSize:13 }}>{desc}</p>
+                    <p style={{ color:T.textMuted, margin:0, fontSize:13 }}>
+                      {done&&!devMode?"Completed — pick another level":desc}
+                    </p>
                   </button>
-                ))}
+                );})}
               </div>
               {/* How to play link on difficulty page too */}
               {game.howToPlay && (
@@ -2222,8 +2278,8 @@ export default function App() {
             </div>
           ) : (
             <div style={{ padding:"0 20px", animation:"fadeUp 0.35s ease" }}>
-              <GameRouter game={game} difficulty={difficulty} scored={scored} devMode={devMode} totalScore={ts}
-                onScore={pts=>recordScore(game.id,pts)}/>
+              <GameRouter game={game} difficulty={difficulty} scored={diffScored} devMode={devMode} totalScore={ts}
+                onScore={pts=>{ recordScore(game.id,difficulty,pts); setDifficulty(null); }}/>
             </div>
           )}
         </div>
@@ -2234,7 +2290,8 @@ export default function App() {
 
   // ── MAIN FEED ─────────────────────────────────────────────────────────────
   const unlockedCount=devMode?GAMES.length:GAMES.filter((_,i)=>isUnlocked(i)).length;
-  const completedCount=Object.keys(state.scores||{}).length;
+  const feedScores=normalizeScores(state.scores);
+  const completedCount=GAMES.filter(g=>g.type!=="final"&&isGameFullyComplete(feedScores,g.id)).length;
 
   return (
     <div style={{ minHeight:"100vh", background:T.bg, position:"relative" }}>
@@ -2273,16 +2330,19 @@ export default function App() {
         <div style={{ padding:"0 16px 44px", display:"flex", flexDirection:"column", gap:9 }}>
           {GAMES.map((game,i)=>{
             const unlocked=gameUnlocked(i);
-            const completed=(state.scores||{})[game.id]!==undefined;
-            const pts=(state.scores||{})[game.id];
-            const justUnlocked=unlocked&&!completed&&i===unlockedCount-1;
+            const isFinal=game.type==="final";
+            const prog=isFinal?null:gameProgress(feedScores,game.id);
+            const completed=!isFinal&&isGameFullyComplete(feedScores,game.id);
+            const partial=prog&&prog.done>0&&!completed;
+            const pts=isFinal?0:gameTotalPts(feedScores,game.id);
+            const justUnlocked=unlocked&&(!prog||prog.done===0)&&i===unlockedCount-1;
 
             return (
               <div key={game.id} onClick={()=>openGame(game,i)}
                 className={unlocked?"card-hover":""}
                 style={{
-                  background:completed?`linear-gradient(135deg,${T.primaryDim}22,${T.accent}12)`:unlocked?T.bgCard:T.bgDeep,
-                  border:`2px solid ${completed?T.primaryDim:unlocked?`${T.primaryDim}${justUnlocked?"cc":"55"}`:T.textDim+"28"}`,
+                  background:completed?`linear-gradient(135deg,${T.primaryDim}22,${T.accent}12)`:partial?`linear-gradient(135deg,${T.primaryDim}14,${T.bgCard})`:unlocked?T.bgCard:T.bgDeep,
+                  border:`2px solid ${completed?T.primaryDim:partial?`${T.mint}88`:unlocked?`${T.primaryDim}${justUnlocked?"cc":"55"}`:T.textDim+"28"}`,
                   borderRadius:18, padding:"16px 18px", cursor:unlocked?"pointer":"default",
                   display:"flex", alignItems:"center", gap:14, transition:"all 0.25s",
                   opacity:unlocked?1:0.36,
@@ -2293,18 +2353,21 @@ export default function App() {
                   display:"flex", alignItems:"center", justifyContent:"center", fontSize:24,
                   background:completed?`linear-gradient(135deg,${T.primaryDim},${T.primary})`:unlocked?`${T.primaryDim}28`:`${T.primaryDim}10`,
                   boxShadow:completed?`0 4px 18px ${T.primaryDim}55`:justUnlocked?`0 0 16px ${T.primaryDim}50`:"none" }}>
-                  {completed?"✨":unlocked?game.emoji:"🔒"}
+                  {completed?"✨":partial?"⭐":unlocked?game.emoji:"🔒"}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
                     <p style={{ color:completed?T.accent:unlocked?T.text:`${T.textDim}99`,
                       fontWeight:800, margin:0, fontSize:15 }}>{game.title}</p>
-                    {unlocked&&!completed&&<span style={{ background:`${T.primaryDim}30`, color:T.textSub,
+                    {unlocked&&!completed&&!partial&&<span style={{ background:`${T.primaryDim}30`, color:T.textSub,
                       fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10,
                       textTransform:"uppercase" }}>{game.unlockLabel}</span>}
+                    {partial&&<span style={{ background:`${T.mint}28`, color:T.mint,
+                      fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10 }}>{prog.done}/{prog.total}</span>}
                   </div>
-                  {completed&&<p style={{ color:T.textMuted, fontSize:12, margin:0 }}>{pts} pts · {game.unlockLabel}</p>}
-                  {unlocked&&!completed&&<p style={{ color:T.textMuted, fontSize:12, margin:0,
+                  {completed&&<p style={{ color:T.textMuted, fontSize:12, margin:0 }}>{pts} pts · all levels · {game.unlockLabel}</p>}
+                  {partial&&<p style={{ color:T.textMuted, fontSize:12, margin:0 }}>{prog.done}/3 difficulties · {pts} pts so far</p>}
+                  {unlocked&&!completed&&!partial&&<p style={{ color:T.textMuted, fontSize:12, margin:0,
                     whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{game.teaser}</p>}
                   {!unlocked&&(
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:2 }}>
@@ -2318,7 +2381,8 @@ export default function App() {
                     <div style={{ width:32, height:32, borderRadius:"50%",
                       background:`linear-gradient(135deg,${T.primaryDim},${T.accent})`,
                       display:"flex", alignItems:"center", justifyContent:"center",
-                      boxShadow:`0 0 14px ${T.primaryDim}60`, fontSize:15, color:"#fff" }}>→</div>
+                      boxShadow:`0 0 14px ${T.primaryDim}60`, fontSize:partial?11:15, color:"#fff",
+                      fontWeight:partial?800:400 }}>{partial?`${prog.done}/3`:"→"}</div>
                   )}
                   {completed&&<span style={{ color:T.primary, fontSize:14, fontWeight:900 }}>+{pts}</span>}
                 </div>
