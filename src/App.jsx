@@ -736,6 +736,34 @@ const Banner = ({ won, message }) => (
   </div>
 );
 
+function WinCelebration({ pts, onContinue }) {
+  return (
+    <div style={{ textAlign:"center", padding:"28px 12px", animation:"popIn 0.5s ease" }}>
+      <div style={{ fontSize:64, marginBottom:12, animation:"heartbeat 1.5s ease-in-out infinite" }}>🎉</div>
+      <p style={{ color:T.mint, fontSize:22, fontWeight:900, margin:"0 0 6px" }}>You got it!</p>
+      <p style={{ color:T.textSub, fontSize:14, marginBottom:8 }}>Nice work — you earned</p>
+      <p style={{ color:T.primary, fontSize:36, fontWeight:900, fontFamily:"'Nunito',sans-serif",
+        margin:"8px 0 28px" }}>+{pts} pts</p>
+      <Btn onClick={onContinue} full>Continue 💜</Btn>
+    </div>
+  );
+}
+
+function CompletedSummary({ pts, onContinue }) {
+  return (
+    <div style={{ textAlign:"center", padding:"28px 12px", animation:"popIn 0.5s ease" }}>
+      <div style={{ fontSize:52, marginBottom:12, animation:"float 3s ease-in-out infinite" }}>✅</div>
+      <p style={{ color:T.mint, fontSize:18, fontWeight:800, margin:"0 0 6px" }}>Already completed!</p>
+      <p style={{ color:T.textSub, fontSize:14, marginBottom:12 }}>You nailed this level.</p>
+      {pts !== undefined && (
+        <p style={{ color:T.primary, fontSize:28, fontWeight:900, fontFamily:"'Nunito',sans-serif",
+          margin:"0 0 24px" }}>+{pts} pts</p>
+      )}
+      <Btn onClick={onContinue} variant="soft" full>Back to difficulties</Btn>
+    </div>
+  );
+}
+
 // How To Play modal
 function HowToPlayModal({ steps, onClose }) {
   return (
@@ -1201,10 +1229,11 @@ function LyricsGame({ data, difficulty, onScore }) {
   const [submitted,setSubmitted]=useState(false);
   const [results,setResults]=useState([]);
 
+  const [finalPts,setFinalPts]=useState(null);
   const submit=()=>{
     const res=puzzles.map((p,i)=>checkAnswer(answers[i],p.answerHashes));
     setResults(res); setSubmitted(true);
-    onScore(res.filter(Boolean).length*(difficulty==="hard"?90:difficulty==="medium"?55:35));
+    setFinalPts(res.filter(Boolean).length*(difficulty==="hard"?90:difficulty==="medium"?55:35));
   };
 
   return (
@@ -1232,6 +1261,9 @@ function LyricsGame({ data, difficulty, onScore }) {
         );
       })}
       {!submitted&&<Btn onClick={submit} full>Submit All 🎵</Btn>}
+      {submitted&&finalPts!==null&&(
+        <Btn onClick={()=>onScore(finalPts)} full style={{ marginTop:16 }}>Continue 💜</Btn>
+      )}
     </div>
   );
 }
@@ -1243,6 +1275,7 @@ function SpellingBeeGame({ data, difficulty, onScore }) {
   const [found,setFound]=useState([]);
   const [msg,setMsg]=useState("");
   const [msgOk,setMsgOk]=useState(true);
+  const [finalPts,setFinalPts]=useState(null);
 
   const flash=(m,ok=true)=>{setMsg(m);setMsgOk(ok);setTimeout(()=>setMsg(""),1300);};
   const submit=()=>{
@@ -1253,7 +1286,7 @@ function SpellingBeeGame({ data, difficulty, onScore }) {
     if (words.map(x=>x.toUpperCase()).includes(w)){
       const nf=[...found,w]; setFound(nf);
       flash(w===pangram.toUpperCase()?"🌟 PANGRAM! You found it!":"✨ Nice one!");
-      if (nf.length>=words.length) onScore(nf.length*(difficulty==="hard"?50:difficulty==="medium"?30:18));
+      if (nf.length>=words.length) setFinalPts(nf.length*(difficulty==="hard"?50:difficulty==="medium"?30:18));
     } else{flash("Not valid",false);}
     setInput("");
   };
@@ -1291,6 +1324,12 @@ function SpellingBeeGame({ data, difficulty, onScore }) {
           color:w===pangram.toUpperCase()?T.gold:T.mint,
           border:`1px solid ${w===pangram.toUpperCase()?T.gold:T.mint}60` }}>{w}</span>)}
       </div>
+      {finalPts!==null&&(
+        <>
+          <Banner won message="You found every word! 🐝"/>
+          <Btn onClick={()=>onScore(finalPts)} full style={{ marginTop:16 }}>Continue 💜</Btn>
+        </>
+      )}
     </div>
   );
 }
@@ -1344,12 +1383,13 @@ function TimelineGame({ data, difficulty, onScore }) {
   const {events}=data[difficulty];
   const [order,setOrder]=useState(()=>shuffleInPlace([...events]));
   const [submitted,setSubmitted]=useState(false);
+  const [finalPts,setFinalPts]=useState(null);
 
   const move=(i,d)=>{const n=[...order],j=i+d;if(j<0||j>=n.length)return;[n[i],n[j]]=[n[j],n[i]];setOrder(n);};
   const check=()=>{
     setSubmitted(true);
     let pts=0;order.forEach((e,i)=>{if(e.text===events[i].text)pts+=Math.round(200/events.length);});
-    onScore(pts);
+    setFinalPts(pts);
   };
 
   return (
@@ -1388,6 +1428,9 @@ function TimelineGame({ data, difficulty, onScore }) {
       </div>
       {!submitted&&<Btn onClick={check} full style={{ marginTop:16 }}>Lock In Order ✓</Btn>}
       {submitted&&<Banner won={order.every((e,i)=>e.text===events[i].text)} message="Our story, in order 💜"/>}
+      {submitted&&finalPts!==null&&(
+        <Btn onClick={()=>onScore(finalPts)} full style={{ marginTop:16 }}>Continue 💜</Btn>
+      )}
     </div>
   );
 }
@@ -1727,6 +1770,7 @@ function SudokuGame({ data, difficulty, onScore }) {
   const {puzzle,solution}=data[difficulty];
   const [grid,setGrid]=useState(puzzle.map(r=>[...r]));
   const [checked,setChecked]=useState(false);
+  const [finalPts,setFinalPts]=useState(null);
 
   const update=(r,c,val)=>{
     if(puzzle[r][c]!==0)return;
@@ -1736,7 +1780,7 @@ function SudokuGame({ data, difficulty, onScore }) {
   const check=()=>{
     setChecked(true);
     let correct=0;grid.forEach((row,r)=>row.forEach((cell,c)=>{if(cell===solution[r][c])correct++;}));
-    onScore(Math.round((correct/16)*320));
+    setFinalPts(Math.round((correct/16)*320));
   };
 
   return (
@@ -1762,6 +1806,9 @@ function SudokuGame({ data, difficulty, onScore }) {
       <br/>
       {!checked&&<Btn onClick={check}>Check Answer ✓</Btn>}
       {checked&&<Banner won={grid.every((row,r)=>row.every((cell,c)=>cell===solution[r][c]))} message="Perfect solve! 🔢"/>}
+      {checked&&finalPts!==null&&(
+        <Btn onClick={()=>onScore(finalPts)} style={{ marginTop:16 }}>Continue 💜</Btn>
+      )}
     </div>
   );
 }
@@ -1910,14 +1957,16 @@ function FinalUnlock({ totalScore }) {
 }
 
 // ── GAME ROUTER ───────────────────────────────────────────────────────────────
-function GameRouter({ game, difficulty, onScore, scored, totalScore, devMode }) {
-  const p={ data:game.data, difficulty, onScore };
-  if (scored && !devMode) return (
-    <div style={{ textAlign:"center", padding:32, animation:"popIn 0.5s ease" }}>
-      <div style={{ fontSize:52, animation:"float 3s ease-in-out infinite", marginBottom:12 }}>✅</div>
-      <p style={{ color:T.mint, fontSize:18, fontWeight:800 }}>Already completed!</p>
-    </div>
-  );
+function GameRouter({ game, difficulty, onScore, scored, totalScore, devMode, savedScore, onBack }) {
+  const [pendingPts, setPendingPts] = useState(null);
+  const p={ data:game.data, difficulty, onScore:(pts)=>setPendingPts(pts) };
+
+  if (pendingPts !== null) {
+    return <WinCelebration pts={pendingPts} onContinue={()=>{ onScore(pendingPts); setPendingPts(null); }}/>;
+  }
+  if (scored && !devMode) {
+    return <CompletedSummary pts={savedScore} onContinue={onBack}/>;
+  }
   const map={
     wordle:WordleGame, connections:ConnectionsGame, trivia:TriviaGame, emoji:EmojiGame,
     memory:MemoryGame, lyrics:LyricsGame, spellingbee:SpellingBeeGame, anagram:AnagramGame,
@@ -2247,10 +2296,10 @@ export default function App() {
                   const done=isDifficultyScored(scores,game.id,d);
                   const got=scores[scoreKey(game.id,d)];
                   return (
-                  <button key={d} onClick={()=>(!done||devMode)&&setDifficulty(d)} className="card-hover btn-press"
+                  <button key={d} onClick={()=>setDifficulty(d)} className="card-hover btn-press"
                     style={{ background:done?`${col}12`:`${T.primaryDim}15`, border:`2px solid ${done?col:T.border}`,
                       borderRadius:18, padding:"18px 20px", textAlign:"left",
-                      cursor:done&&!devMode?"default":"pointer", opacity:done&&!devMode?0.72:1,
+                      cursor:"pointer", opacity:done&&!devMode?0.85:1,
                       transition:"all 0.22s", fontFamily:"'Quicksand',sans-serif" }}
                     onMouseEnter={e=>{if(done&&!devMode)return;e.currentTarget.style.borderColor=col;e.currentTarget.style.background=`${col}14`;e.currentTarget.style.boxShadow=`0 4px 18px ${col}30`;}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor=done?col:T.border;e.currentTarget.style.background=done?`${col}12`:`${T.primaryDim}15`;e.currentTarget.style.boxShadow="none";}}>
@@ -2261,7 +2310,7 @@ export default function App() {
                       </span>
                     </div>
                     <p style={{ color:T.textMuted, margin:0, fontSize:13 }}>
-                      {done&&!devMode?"Completed — pick another level":desc}
+                      {done&&!devMode?"Tap to see your score ✓":desc}
                     </p>
                   </button>
                 );})}
@@ -2279,6 +2328,8 @@ export default function App() {
           ) : (
             <div style={{ padding:"0 20px", animation:"fadeUp 0.35s ease" }}>
               <GameRouter game={game} difficulty={difficulty} scored={diffScored} devMode={devMode} totalScore={ts}
+                savedScore={diffScored?scores[scoreKey(game.id,difficulty)]:undefined}
+                onBack={()=>setDifficulty(null)}
                 onScore={pts=>{ recordScore(game.id,difficulty,pts); setDifficulty(null); }}/>
             </div>
           )}
